@@ -52,6 +52,10 @@ ScholarDesk brings research project management, publication tracking, teaching p
 - Task overview
 - Upcoming exams and reminders
 
+## GitHub Repository
+
+**https://github.com/Drhari730/scholardesk**
+
 ## Deploy to Railway (Live Site)
 
 ScholarDesk is configured for **Railway** with PostgreSQL.
