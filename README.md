@@ -52,7 +52,46 @@ ScholarDesk brings research project management, publication tracking, teaching p
 - Task overview
 - Upcoming exams and reminders
 
-## Quick Start
+## Deploy to Railway (Live Site)
+
+ScholarDesk is configured for **Railway** with PostgreSQL.
+
+### One-time setup
+
+1. **Sign in to Railway** (required for live URL):
+   - Open: https://railway.com/activate
+   - Enter the device code from the agent, or use the one-click link
+
+2. **Deploy** (after Railway login):
+```bash
+chmod +x scripts/deploy-railway.sh
+./scripts/deploy-railway.sh
+```
+
+This will:
+- Create a Railway project named `scholardesk`
+- Add PostgreSQL database
+- Deploy the app with sample data
+- Generate a public `*.railway.app` URL
+
+### Manual deploy
+
+```bash
+railway login --browserless
+railway up -y --name scholardesk
+railway add --database postgres
+railway variable set SEED_DATABASE=true
+railway domain
+```
+
+### Environment variables (Railway)
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | Auto-set by Railway PostgreSQL |
+| `SEED_DATABASE` | `true` (first deploy only) |
+
+## Quick Start (Local)
 
 ```bash
 # Install dependencies
