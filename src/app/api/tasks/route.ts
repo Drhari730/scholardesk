@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendEmail, taskAssignedEmail } from "@/lib/email";
+import { formatDate } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get("projectId");
@@ -23,10 +25,13 @@ export async function POST(req: NextRequest) {
       projectId: body.projectId || null,
       assigneeId: body.assigneeId || null,
     },
-    include: { assignee: true },
+    include: { assignee: true, project: true },
   });
 
-  if (body.createReminder && body.dueDate && body.assigneeId) {
+  const shouldRemind = body.createReminder && body.dueDate && body.assigneeId;
+  const shouldEmail = body.sendEmail !== false && body.assigneeId;
+
+  if (shouldRemind) {
     await prisma.reminder.create({
       data: {
         title: `Task reminder: ${body.title}`,
@@ -38,5 +43,17 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json(task, { status: 201 });
+  let emailResult = null;
+  if (shouldEmail && task.assignee?.email) {
+    const template = taskAssignedEmail({
+      assigneeName: task.assignee.name,
+      taskTitle: task.title,
+      projectTitle: task.project?.title,
+      dueDate: task.dueDate ? formatDate(task.dueDate) : undefined,
+      description: task.description ?? undefined,
+    });
+    emailResult = await sendEmail({ to: task.assignee.email, ...template });
+  }
+
+  return NextResponse.json({ ...task, emailSent: emailResult?.success ?? false }, { status: 201 });
 }

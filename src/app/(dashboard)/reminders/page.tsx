@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Bell, Check, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Bell, Check, AlertTriangle, Mail } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,11 +38,22 @@ export default function RemindersPage() {
   const { data: people } = useFetch<Person[]>("/api/people");
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState<"all" | "pending" | "overdue" | "done">("pending");
+  const [emailConfigured, setEmailConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/email/status")
+      .then((res) => res.json())
+      .then((data) => setEmailConfigured(data.configured))
+      .catch(() => setEmailConfigured(false));
+  }, []);
 
   async function createReminder(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    await apiPost("/api/reminders", Object.fromEntries(fd));
+    await apiPost("/api/reminders", {
+      ...Object.fromEntries(fd),
+      sendEmail: fd.get("sendEmail") === "on",
+    });
     setShowForm(false);
     refetch();
   }
@@ -103,12 +114,26 @@ export default function RemindersPage() {
                     ))}
                   </Select>
                 </div>
+                <label className="flex items-center gap-2 text-sm text-slate-600">
+                  <input type="checkbox" name="sendEmail" defaultChecked />
+                  Send email notification now (if person has email)
+                </label>
                 <Button type="submit" className="w-full">Create Reminder</Button>
               </form>
             </DialogContent>
           </DialogRoot>
         }
       />
+
+      {emailConfigured === false && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+          <Mail className="mt-0.5 h-5 w-5 shrink-0" />
+          <p className="text-sm">
+            Email is not configured yet. Add <code className="rounded bg-amber-100 px-1">RESEND_API_KEY</code> in
+            Railway to enable reminder emails.
+          </p>
+        </div>
+      )}
 
       {overdueCount > 0 && (
         <div className="mb-6 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-800">

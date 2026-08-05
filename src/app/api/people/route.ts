@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendEmail, welcomePersonEmail } from "@/lib/email";
+import { PERSON_ROLES } from "@/lib/constants";
 
 export async function GET() {
   const people = await prisma.person.findMany({
@@ -24,5 +26,14 @@ export async function POST(req: NextRequest) {
       notes: body.notes,
     },
   });
-  return NextResponse.json(person, { status: 201 });
+
+  let emailSent = false;
+  if (body.sendEmail && person.email) {
+    const roleLabel = PERSON_ROLES.find((r) => r.value === person.role)?.label ?? person.role;
+    const template = welcomePersonEmail({ name: person.name, role: roleLabel });
+    const result = await sendEmail({ to: person.email, ...template });
+    emailSent = result.success;
+  }
+
+  return NextResponse.json({ ...person, emailSent }, { status: 201 });
 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendEmail, projectInviteEmail } from "@/lib/email";
+import { PERSON_ROLES } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -9,9 +11,27 @@ export async function POST(req: NextRequest) {
       personId: body.personId,
       role: body.role || "MEMBER",
     },
-    include: { person: true },
+    include: {
+      person: true,
+      project: true,
+    },
   });
-  return NextResponse.json(member, { status: 201 });
+
+  let emailSent = false;
+  if (body.sendEmail !== false && member.person.email) {
+    const roleLabel =
+      PERSON_ROLES.find((r) => r.value === member.role)?.label ?? member.role;
+    const template = projectInviteEmail({
+      memberName: member.person.name,
+      projectTitle: member.project.title,
+      role: roleLabel,
+      description: member.project.description ?? undefined,
+    });
+    const result = await sendEmail({ to: member.person.email, ...template });
+    emailSent = result.success;
+  }
+
+  return NextResponse.json({ ...member, emailSent }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {

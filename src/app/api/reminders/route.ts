@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendEmail, reminderEmail } from "@/lib/email";
+import { formatDateTime } from "@/lib/utils";
 
 export async function GET() {
   const reminders = await prisma.reminder.findMany({
@@ -23,5 +25,24 @@ export async function POST(req: NextRequest) {
     },
     include: { person: true },
   });
-  return NextResponse.json(reminder, { status: 201 });
+
+  let emailSent = false;
+  if (body.sendEmail && reminder.person?.email) {
+    const template = reminderEmail({
+      recipientName: reminder.person.name,
+      title: reminder.title,
+      message: reminder.message ?? undefined,
+      dueDate: formatDateTime(reminder.dueDate),
+    });
+    const result = await sendEmail({ to: reminder.person.email, ...template });
+    if (result.success) {
+      await prisma.reminder.update({
+        where: { id: reminder.id },
+        data: { isSent: true },
+      });
+      emailSent = true;
+    }
+  }
+
+  return NextResponse.json({ ...reminder, emailSent }, { status: 201 });
 }

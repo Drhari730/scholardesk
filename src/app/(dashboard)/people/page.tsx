@@ -36,7 +36,10 @@ export default function PeoplePage() {
   async function createPerson(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    await apiPost("/api/people", Object.fromEntries(fd));
+    await apiPost("/api/people", {
+      ...Object.fromEntries(fd),
+      sendEmail: fd.get("sendEmail") === "on",
+    });
     setShowForm(false);
     refetch();
   }
@@ -99,6 +102,10 @@ export default function PeoplePage() {
                   <Label>Notes</Label>
                   <Textarea name="notes" className="mt-1" />
                 </div>
+                <label className="flex items-center gap-2 text-sm text-slate-600">
+                  <input type="checkbox" name="sendEmail" />
+                  Send welcome email (requires email address)
+                </label>
                 <Button type="submit" className="w-full">Add Person</Button>
               </form>
             </DialogContent>

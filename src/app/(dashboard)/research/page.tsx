@@ -1,26 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Users, CheckCircle2, Circle } from "lucide-react";
+import { Plus, Users, CheckCircle2, Circle, UserPlus, X } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
-import {
-  DialogRoot,
-  DialogTrigger,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { DialogRoot, DialogTrigger, DialogContent } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/ui/motion";
 import { useFetch, apiPost, apiPatch, apiDelete } from "@/lib/hooks";
 import { formatDate } from "@/lib/utils";
-import {
-  PROJECT_STATUSES,
-  TASK_STATUSES,
-  PRIORITIES,
-  getStatusMeta,
-} from "@/lib/constants";
+import { PROJECT_STATUSES, PRIORITIES, PERSON_ROLES, getStatusMeta } from "@/lib/constants";
 
 interface Project {
   id: string;
@@ -28,31 +19,24 @@ interface Project {
   description: string | null;
   status: string;
   priority: string;
-  startDate: string | null;
-  endDate: string | null;
-  tags: string | null;
-  members: Array<{ id: string; person: { id: string; name: string; role: string } }>;
-  tasks: Array<{
-    id: string;
-    title: string;
-    status: string;
-    dueDate: string | null;
-    assignee: { name: string } | null;
-  }>;
-  _count: { tasks: number };
+  members: Array<{ id: string; role: string; person: { id: string; name: string; email: string | null } }>;
+  tasks: Array<{ id: string; title: string; status: string; assignee: { name: string } | null }>;
 }
 
 interface Person {
   id: string;
   name: string;
   role: string;
+  email: string | null;
 }
 
 export default function ResearchPage() {
   const { data: projects, loading, refetch } = useFetch<Project[]>("/api/projects");
-  const { data: people } = useFetch<Person[]>("/api/people");
+  const { data: people, refetch: refetchPeople } = useFetch<Person[]>("/api/people");
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState<string | null>(null);
+  const [showMemberForm, setShowMemberForm] = useState<string | null>(null);
+  const [showNewPersonForm, setShowNewPersonForm] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
 
   async function createProject(e: React.FormEvent<HTMLFormElement>) {
@@ -70,8 +54,45 @@ export default function ResearchPage() {
       ...Object.fromEntries(fd),
       projectId,
       createReminder: fd.get("createReminder") === "on",
+      sendEmail: fd.get("sendEmail") === "on",
     });
     setShowTaskForm(null);
+    refetch();
+  }
+
+  async function addMember(e: React.FormEvent<HTMLFormElement>, projectId: string) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    await apiPost("/api/project-members", {
+      projectId,
+      personId: fd.get("personId"),
+      role: fd.get("role") || "MEMBER",
+      sendEmail: fd.get("sendEmail") === "on",
+    });
+    setShowMemberForm(null);
+    refetch();
+  }
+
+  async function createPersonAndAdd(e: React.FormEvent<HTMLFormElement>, projectId: string) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const person = await apiPost("/api/people", {
+      ...Object.fromEntries(fd),
+      sendEmail: fd.get("sendEmail") === "on",
+    });
+    await apiPost("/api/project-members", {
+      projectId,
+      personId: person.id,
+      role: fd.get("memberRole") || "RESEARCH_ASSISTANT",
+      sendEmail: fd.get("sendEmail") === "on",
+    });
+    setShowNewPersonForm(null);
+    refetchPeople();
+    refetch();
+  }
+
+  async function removeMember(memberId: string) {
+    await apiDelete(`/api/project-members?id=${memberId}`);
     refetch();
   }
 
@@ -88,54 +109,37 @@ export default function ResearchPage() {
     refetch();
   }
 
+  function availablePeople(project: Project) {
+    const memberIds = new Set(project.members.map((m) => m.person.id));
+    return people?.filter((p) => !memberIds.has(p.id)) ?? [];
+  }
+
   return (
     <PageTransition>
       <PageHeader
         title="Research Projects"
-        description="Track your research ideas, active studies, and team collaborations."
+        description="Track projects, assign tasks, invite team members, and email students automatically."
         action={
           <DialogRoot open={showProjectForm} onOpenChange={setShowProjectForm}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4" /> New Project
-              </Button>
+              <Button><Plus className="h-4 w-4" /> New Project</Button>
             </DialogTrigger>
             <DialogContent title="Create Research Project">
               <form onSubmit={createProject} className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Project Title</Label>
-                  <Input id="title" name="title" required className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" name="description" className="mt-1" />
-                </div>
+                <div><Label>Project Title</Label><Input name="title" required className="mt-1" /></div>
+                <div><Label>Description</Label><Textarea name="description" className="mt-1" /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="status">Status</Label>
-                    <Select id="status" name="status" className="mt-1">
-                      {PROJECT_STATUSES.map((s) => (
-                        <option key={s.value} value={s.value}>{s.label}</option>
-                      ))}
+                    <Label>Status</Label>
+                    <Select name="status" className="mt-1">
+                      {PROJECT_STATUSES.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="priority">Priority</Label>
-                    <Select id="priority" name="priority" className="mt-1">
-                      {PRIORITIES.map((p) => (
-                        <option key={p.value} value={p.value}>{p.label}</option>
-                      ))}
+                    <Label>Priority</Label>
+                    <Select name="priority" className="mt-1">
+                      {PRIORITIES.map((p) => (<option key={p.value} value={p.value}>{p.label}</option>))}
                     </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="startDate">Start Date</Label>
-                    <Input id="startDate" name="startDate" type="date" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label htmlFor="endDate">End Date</Label>
-                    <Input id="endDate" name="endDate" type="date" className="mt-1" />
                   </div>
                 </div>
                 <Button type="submit" className="w-full">Create Project</Button>
@@ -148,134 +152,62 @@ export default function ResearchPage() {
       {loading ? (
         <div className="skeleton h-64 rounded-2xl" />
       ) : !projects?.length ? (
-        <EmptyState
-          title="No research projects yet"
-          description="Start by creating your first research project to track ideas and team progress."
-          action={
-            <Button onClick={() => setShowProjectForm(true)}>
-              <Plus className="h-4 w-4" /> Create Project
-            </Button>
-          }
-        />
+        <EmptyState title="No research projects yet" description="Create your first project to get started." />
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {projects.map((project) => {
             const statusMeta = getStatusMeta(PROJECT_STATUSES, project.status);
-            const priorityMeta = getStatusMeta(PRIORITIES, project.priority);
+            const isManaging = selectedProject === project.id;
             const completedTasks = project.tasks.filter((t) => t.status === "COMPLETED").length;
 
             return (
-              <Card key={project.id} className="overflow-hidden">
+              <Card key={project.id}>
                 <CardHeader className="border-b border-slate-100 bg-slate-50/50">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <CardTitle className="text-base">{project.title}</CardTitle>
-                      {project.description && (
-                        <p className="mt-1 text-sm text-slate-500 line-clamp-2">
-                          {project.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <Badge className={statusMeta.color}>{statusMeta.label}</Badge>
-                      <Badge className={priorityMeta.color}>{priorityMeta.label}</Badge>
-                    </div>
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-base">{project.title}</CardTitle>
+                    <Badge className={statusMeta.color}>{statusMeta.label}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
-                  <div className="flex items-center gap-4 text-xs text-slate-500">
-                    {project.startDate && <span>Start: {formatDate(project.startDate)}</span>}
-                    {project.endDate && <span>End: {formatDate(project.endDate)}</span>}
-                    <span className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      {project.members.length} members
-                    </span>
+                  <div className="flex gap-4 text-xs text-slate-500">
+                    <span><Users className="inline h-3 w-3" /> {project.members.length} members</span>
+                    <span>{completedTasks}/{project.tasks.length} tasks done</span>
                   </div>
 
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-sm font-medium text-slate-700">
-                        Tasks ({completedTasks}/{project.tasks.length})
-                      </p>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setShowTaskForm(project.id)}
-                      >
-                        <Plus className="h-3 w-3" /> Add Task
-                      </Button>
-                    </div>
-                    <div className="space-y-1.5">
-                      {project.tasks.slice(0, 4).map((task) => {
-                        const taskMeta = getStatusMeta(TASK_STATUSES, task.status);
-                        return (
-                          <div
-                            key={task.id}
-                            className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50"
-                          >
-                            <button
-                              onClick={() => toggleTask(task.id, task.status)}
-                              className="text-slate-400 hover:text-teal-600"
-                            >
-                              {task.status === "COMPLETED" ? (
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                              ) : (
-                                <Circle className="h-4 w-4" />
-                              )}
-                            </button>
-                            <span
-                              className={`flex-1 text-sm ${
-                                task.status === "COMPLETED"
-                                  ? "text-slate-400 line-through"
-                                  : "text-slate-700"
-                              }`}
-                            >
-                              {task.title}
-                            </span>
-                            {task.assignee && (
-                              <span className="text-xs text-slate-400">
-                                {task.assignee.name}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setSelectedProject(
-                          selectedProject === project.id ? null : project.id
-                        )
-                      }
-                    >
-                      {selectedProject === project.id ? "Hide" : "Manage"}
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setShowTaskForm(project.id)}>
+                      <Plus className="h-3 w-3" /> Task
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-500 hover:text-red-600"
-                      onClick={() => deleteProject(project.id)}
-                    >
-                      Delete
+                    <Button size="sm" variant="outline" onClick={() => setSelectedProject(isManaging ? null : project.id)}>
+                      {isManaging ? "Hide Team" : "Manage Team"}
                     </Button>
+                    <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteProject(project.id)}>Delete</Button>
                   </div>
 
-                  {selectedProject === project.id && (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="mb-2 text-sm font-medium">Team Members</p>
+                  {isManaging && (
+                    <div className="rounded-xl border border-teal-100 bg-teal-50/30 p-4">
+                      <div className="mb-3 flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setShowMemberForm(project.id)}>
+                          <UserPlus className="h-3 w-3" /> Add Existing
+                        </Button>
+                        <Button size="sm" onClick={() => setShowNewPersonForm(project.id)}>
+                          <Plus className="h-3 w-3" /> Invite New
+                        </Button>
+                      </div>
                       {project.members.length === 0 ? (
-                        <p className="text-xs text-slate-400">No members added</p>
+                        <p className="text-xs text-slate-400">No members — add students or colleagues above (emails will be sent if checked).</p>
                       ) : (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="space-y-2">
                           {project.members.map((m) => (
-                            <Badge key={m.id} className="bg-white text-slate-600">
-                              {m.person.name}
-                            </Badge>
+                            <div key={m.id} className="flex items-center justify-between rounded-lg bg-white px-3 py-2">
+                              <div>
+                                <p className="text-sm font-medium">{m.person.name}</p>
+                                <p className="text-xs text-slate-400">{m.person.email ?? "No email"}</p>
+                              </div>
+                              <button onClick={() => removeMember(m.id)} className="text-slate-400 hover:text-red-500">
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
                           ))}
                         </div>
                       )}
@@ -291,46 +223,70 @@ export default function ResearchPage() {
       {showTaskForm && (
         <DialogRoot open={!!showTaskForm} onOpenChange={() => setShowTaskForm(null)}>
           <DialogContent title="Add Task">
-            <form
-              onSubmit={(e) => createTask(e, showTaskForm)}
-              className="space-y-4"
-            >
-              <div>
-                <Label>Task Title</Label>
-                <Input name="title" required className="mt-1" />
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea name="description" className="mt-1" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Priority</Label>
-                  <Select name="priority" className="mt-1">
-                    {PRIORITIES.map((p) => (
-                      <option key={p.value} value={p.value}>{p.label}</option>
-                    ))}
-                  </Select>
-                </div>
-                <div>
-                  <Label>Due Date</Label>
-                  <Input name="dueDate" type="date" className="mt-1" />
-                </div>
-              </div>
+            <form onSubmit={(e) => createTask(e, showTaskForm)} className="space-y-4">
+              <div><Label>Task Title</Label><Input name="title" required className="mt-1" /></div>
+              <div><Label>Description</Label><Textarea name="description" className="mt-1" /></div>
+              <div><Label>Due Date</Label><Input name="dueDate" type="date" className="mt-1" /></div>
               <div>
                 <Label>Assign To</Label>
                 <Select name="assigneeId" className="mt-1">
                   <option value="">Unassigned</option>
-                  {people?.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
+                  {people?.map((p) => (<option key={p.id} value={p.id}>{p.name} {p.email ? `(${p.email})` : ""}</option>))}
                 </Select>
               </div>
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input type="checkbox" name="createReminder" />
-                Create reminder for assignee
-              </label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="createReminder" defaultChecked /> In-app reminder</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="sendEmail" defaultChecked /> Email assignee now</label>
               <Button type="submit" className="w-full">Add Task</Button>
+            </form>
+          </DialogContent>
+        </DialogRoot>
+      )}
+
+      {showMemberForm && (
+        <DialogRoot open={!!showMemberForm} onOpenChange={() => setShowMemberForm(null)}>
+          <DialogContent title="Add Team Member">
+            <form onSubmit={(e) => addMember(e, showMemberForm)} className="space-y-4">
+              <div>
+                <Label>Select Person</Label>
+                <Select name="personId" required className="mt-1">
+                  <option value="">Choose...</option>
+                  {projects?.find((p) => p.id === showMemberForm) &&
+                    availablePeople(projects.find((p) => p.id === showMemberForm)!).map((p) => (
+                      <option key={p.id} value={p.id}>{p.name} {p.email ? `— ${p.email}` : "(no email)"}</option>
+                    ))}
+                </Select>
+              </div>
+              <div>
+                <Label>Project Role</Label>
+                <Select name="role" className="mt-1">
+                  <option value="RESEARCH_ASSISTANT">Research Assistant</option>
+                  <option value="STUDENT">Student</option>
+                  <option value="CO_INVESTIGATOR">Co-Investigator</option>
+                  <option value="MEMBER">Team Member</option>
+                </Select>
+              </div>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="sendEmail" defaultChecked /> Send project invitation email</label>
+              <Button type="submit" className="w-full">Add to Project</Button>
+            </form>
+          </DialogContent>
+        </DialogRoot>
+      )}
+
+      {showNewPersonForm && (
+        <DialogRoot open={!!showNewPersonForm} onOpenChange={() => setShowNewPersonForm(null)}>
+          <DialogContent title="Invite New Team Member">
+            <form onSubmit={(e) => createPersonAndAdd(e, showNewPersonForm)} className="space-y-4">
+              <div><Label>Name</Label><Input name="name" required className="mt-1" /></div>
+              <div><Label>Email (required for notifications)</Label><Input name="email" type="email" required className="mt-1" /></div>
+              <div><Label>Phone</Label><Input name="phone" className="mt-1" /></div>
+              <div>
+                <Label>Role</Label>
+                <Select name="role" className="mt-1">
+                  {PERSON_ROLES.map((r) => (<option key={r.value} value={r.value}>{r.label}</option>))}
+                </Select>
+              </div>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="sendEmail" defaultChecked /> Send welcome & project invite email</label>
+              <Button type="submit" className="w-full">Invite & Add</Button>
             </form>
           </DialogContent>
         </DialogRoot>
