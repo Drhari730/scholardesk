@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Person {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  role      String   @default("STUDENT")
+  department String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectMembers ProjectMember[]
+  tasks          Task[]
+  reminders      Reminder[]
+}
+
+model ResearchProject {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      String   @default("ACTIVE")
+  priority    String   @default("MEDIUM")
+  startDate   DateTime?
+  endDate     DateTime?
+  tags        String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members ProjectMember[]
+  tasks   Task[]
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  personId  String
+  role      String   @default("MEMBER")
+  joinedAt  DateTime @default(now())
+
+  project ResearchProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  person  Person          @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, personId])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("TODO")
+  priority    String    @default("MEDIUM")
+  dueDate     DateTime?
+  completedAt DateTime?
+  projectId   String?
+  assigneeId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project  ResearchProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignee Person?          @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  reminders Reminder[]
+}
+
+model Publication {
+  id              String    @id @default(cuid())
+  title           String
+  journal         String?
+  authors         String?
+  status          String    @default("DRAFT")
+  submittedDate   DateTime?
+  decisionDate    DateTime?
+  reviewerComments String?
+  doi             String?
+  manuscriptId    String?
+  impactFactor    Float?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  reminders Reminder[]
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  code        String
+  name        String
+  semester    String?
+  year        String?
+  credits     Int?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sessions      ClassSession[]
+  exams         Exam[]
+  questionPapers QuestionPaper[]
+}
+
+model ClassSession {
+  id        String   @id @default(cuid())
+  courseId  String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  room      String?
+  topic     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Exam {
+  id           String    @id @default(cuid())
+  courseId     String
+  title        String
+  type         String    @default("MIDTERM")
+  examDate     DateTime
+  duration     Int?
+  totalMarks   Int?
+  venue        String?
+  syllabus     String?
+  status       String    @default("PLANNED")
+  marksEntered Boolean   @default(false)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  course         Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questionPapers QuestionPaper[]
+  reminders      Reminder[]
+}
+
+model QuestionPaper {
+  id          String    @id @default(cuid())
+  courseId    String
+  examId      String?
+  title       String
+  status      String    @default("NOT_STARTED")
+  dueDate     DateTime?
+  totalMarks  Int?
+  sections    String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  exam   Exam?  @relation(fields: [examId], references: [id], onDelete: SetNull)
+}
+
+model Reminder {
+  id            String    @id @default(cuid())
+  title         String
+  message       String?
+  dueDate       DateTime
+  isCompleted   Boolean   @default(false)
+  isSent        Boolean   @default(false)
+  personId      String?
+  taskId        String?
+  publicationId String?
+  examId        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  person      Person?      @relation(fields: [personId], references: [id], onDelete: SetNull)
+  task        Task?        @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  publication Publication? @relation(fields: [publicationId], references: [id], onDelete: SetNull)
+  exam        Exam?        @relation(fields: [examId], references: [id], onDelete: SetNull)
+}
+
+model AppSettings {
+  id          String   @id @default("default")
+  userName    String   @default("Dr. Hari Prakash")
+  userTitle   String   @default("Assistant Professor, Public Health")
+  institution String?
+  email       String?
+  updatedAt   DateTime @updatedAt
+}
