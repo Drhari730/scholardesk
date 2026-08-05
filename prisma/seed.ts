@@ -1,9 +1,14 @@
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import path from "path";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
-const dbPath = path.join(__dirname, "..", "dev.db");
-const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` });
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is required to run seed");
+}
+
+const pool = new Pool({ connectionString: databaseUrl });
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
@@ -18,6 +23,12 @@ async function main() {
       email: "hari.prakash@university.edu",
     },
   });
+
+  const existingPeople = await prisma.person.count();
+  if (existingPeople > 0) {
+    console.log("Database already seeded, skipping.");
+    return;
+  }
 
   const students = await Promise.all([
     prisma.person.create({
