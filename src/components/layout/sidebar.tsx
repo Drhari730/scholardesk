@@ -9,6 +9,7 @@ import {
   BookOpen,
   GraduationCap,
   Calendar,
+  CalendarDays,
   FileQuestion,
   Bell,
   Users,
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/timetable", label: "Class Timetable", icon: Calendar },
   { href: "/exams", label: "Exams & Marks", icon: ClipboardList },
   { href: "/question-papers", label: "Question Papers", icon: FileQuestion },
+  { href: "/calendar", label: "Google Calendar", icon: CalendarDays },
   { href: "/people", label: "People", icon: Users },
   { href: "/reminders", label: "Reminders", icon: Bell },
 ];

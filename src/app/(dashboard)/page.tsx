@@ -9,24 +9,24 @@ import {
   Users,
   AlertTriangle,
   Calendar,
+  ExternalLink,
+  Rocket,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
 import { PageHeader, StatCard } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { DonutChartCard, PieChartCard } from "@/components/charts/chart-cards";
 import { useFetch } from "@/lib/hooks";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { getStatusMeta, PUBLICATION_STATUSES, TASK_STATUSES } from "@/lib/constants";
+import {
+  getStatusMeta,
+  PUBLICATION_STATUSES,
+  TASK_STATUSES,
+  PROJECT_STATUSES,
+  EXAM_STATUSES,
+} from "@/lib/constants";
 
 interface DashboardData {
   stats: {
@@ -43,7 +43,6 @@ interface DashboardData {
     title: string;
     journal: string | null;
     status: string;
-    updatedAt: string;
   }>;
   upcomingExams: Array<{
     id: string;
@@ -55,17 +54,42 @@ interface DashboardData {
     id: string;
     title: string;
     dueDate: string;
-    isCompleted: boolean;
     person: { name: string } | null;
+  }>;
+  recentProjects: Array<{
+    id: string;
+    title: string;
+    status: string;
+    members: Array<{ person: { name: string } }>;
   }>;
   pubStatusCounts: Array<{ status: string; _count: number }>;
   taskStatusCounts: Array<{ status: string; _count: number }>;
+  projectStatusCounts: Array<{ status: string; _count: number }>;
+  examStatusCounts: Array<{ status: string; _count: number }>;
 }
 
-const CHART_COLORS = ["#0f5c5c", "#d4a853", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
+interface PortfolioData {
+  personalSite: string;
+  profile: { name: string; title: string; publications: number; tools: number };
+  projects: Array<{
+    name: string;
+    category: string;
+    status: string;
+    description: string;
+    link: string;
+  }>;
+}
+
+const statusBadge: Record<string, string> = {
+  live: "bg-emerald-100 text-emerald-700",
+  development: "bg-amber-100 text-amber-700",
+  prototype: "bg-violet-100 text-violet-700",
+  planned: "bg-slate-100 text-slate-600",
+};
 
 export default function DashboardPage() {
   const { data, loading } = useFetch<DashboardData>("/api/dashboard");
+  const { data: portfolio } = useFetch<PortfolioData>("/api/portfolio");
 
   if (loading || !data) {
     return (
@@ -82,19 +106,44 @@ export default function DashboardPage() {
 
   const pubChart = data.pubStatusCounts.map((p) => ({
     name: getStatusMeta(PUBLICATION_STATUSES, p.status).label,
-    count: p._count,
+    value: p._count,
+    status: p.status,
   }));
 
   const taskChart = data.taskStatusCounts.map((t) => ({
     name: getStatusMeta(TASK_STATUSES, t.status).label,
-    count: t._count,
+    value: t._count,
+    status: t.status,
   }));
+
+  const projectChart = data.projectStatusCounts.map((p) => ({
+    name: getStatusMeta(PROJECT_STATUSES, p.status).label,
+    value: p._count,
+    status: p.status,
+  }));
+
+  const examChart = data.examStatusCounts.map((e) => ({
+    name: getStatusMeta(EXAM_STATUSES, e.status).label,
+    value: e._count,
+    status: e.status,
+  }));
+
+  const liveTools = portfolio?.projects.filter((p) => p.status === "live").length ?? 0;
 
   return (
     <PageTransition>
       <PageHeader
         title="Welcome back, Dr. Hari Prakash"
-        description="Your unified academic command center — research, teaching, and publications at a glance."
+        description="Your unified academic command center — research, teaching, publications, and digital health tools."
+        action={
+          <Link
+            href="/calendar"
+            className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+          >
+            <Calendar className="h-4 w-4" />
+            Google Calendar
+          </Link>
+        }
       />
 
       {data.stats.overdueReminders > 0 && (
@@ -104,9 +153,7 @@ export default function DashboardPage() {
             <p className="text-sm">
               You have <strong>{data.stats.overdueReminders}</strong> overdue reminder
               {data.stats.overdueReminders > 1 ? "s" : ""}.{" "}
-              <Link href="/reminders" className="font-medium underline">
-                View reminders
-              </Link>
+              <Link href="/reminders" className="font-medium underline">View reminders</Link>
             </p>
           </div>
         </FadeIn>
@@ -120,88 +167,112 @@ export default function DashboardPage() {
           <StatCard label="Pending Tasks" value={data.stats.pendingTasks} icon={ClipboardList} />
         </StaggerItem>
         <StaggerItem>
-          <StatCard label="Courses" value={data.stats.courses} icon={GraduationCap} />
+          <StatCard label="Publications" value={data.stats.totalPublications} icon={BookOpen} trend={`${portfolio?.profile.publications ?? 43}+ on personal site`} />
         </StaggerItem>
         <StaggerItem>
-          <StatCard label="Team Members" value={data.stats.people} icon={Users} />
+          <StatCard label="Live Digital Tools" value={liveTools} icon={Rocket} trend="From your portfolio" />
         </StaggerItem>
       </StaggerContainer>
 
-      <div className="mb-8 grid gap-6 lg:grid-cols-2">
-        <FadeIn delay={0.1}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Publication Pipeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {pubChart.length > 0 ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={pubChart}>
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                      {pubChart.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="py-8 text-center text-sm text-slate-400">No publications yet</p>
-              )}
-            </CardContent>
-          </Card>
+      <div className="mb-8 grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
+        <FadeIn delay={0.05}>
+          <DonutChartCard
+            title="Publication Pipeline"
+            description="Manuscript status breakdown"
+            data={pubChart}
+          />
         </FadeIn>
-
+        <FadeIn delay={0.1}>
+          <PieChartCard
+            title="Task Distribution"
+            description="Research & teaching tasks"
+            data={taskChart}
+          />
+        </FadeIn>
         <FadeIn delay={0.15}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Task Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {taskChart.length > 0 ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={taskChart}>
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                      {taskChart.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="py-8 text-center text-sm text-slate-400">No tasks yet</p>
-              )}
-            </CardContent>
-          </Card>
+          <DonutChartCard
+            title="Research Projects"
+            description="By project phase"
+            data={projectChart}
+            innerRadius={50}
+            outerRadius={80}
+          />
+        </FadeIn>
+        <FadeIn delay={0.2}>
+          <PieChartCard
+            title="Exam Lifecycle"
+            description="Exam planning & grading"
+            data={examChart}
+          />
         </FadeIn>
       </div>
 
+      {portfolio && (
+        <FadeIn delay={0.22} className="mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Rocket className="h-5 w-5 text-teal-700" />
+                  Your Digital Health Portfolio
+                </CardTitle>
+                <p className="mt-1 text-sm text-slate-500">
+                  Tools & projects from your personal website — Onco Care, Prama AI, VEDA, Sangam & more
+                </p>
+              </div>
+              <a
+                href={portfolio.personalSite}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs font-medium text-teal-700 hover:underline"
+              >
+                Personal site <ExternalLink className="h-3 w-3" />
+              </a>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {portfolio.projects.slice(0, 6).map((project) => (
+                  <a
+                    key={project.name}
+                    href={project.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group rounded-xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 transition-all hover:border-teal-200 hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-slate-800 group-hover:text-teal-800">
+                        {project.name}
+                      </h3>
+                      <Badge className={statusBadge[project.status] ?? statusBadge.planned}>
+                        {project.status}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-teal-600">{project.category}</p>
+                    <p className="mt-2 line-clamp-2 text-xs text-slate-500">{project.description}</p>
+                  </a>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </FadeIn>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-3">
-        <FadeIn delay={0.2} className="lg:col-span-1">
+        <FadeIn delay={0.25} className="lg:col-span-1">
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-4 w-4 text-teal-700" />
                 Upcoming Reminders
               </CardTitle>
-              <Link href="/reminders" className="text-xs text-teal-700 hover:underline">
-                View all
-              </Link>
+              <Link href="/reminders" className="text-xs text-teal-700 hover:underline">View all</Link>
             </CardHeader>
             <CardContent className="space-y-3">
               {data.upcomingReminders.length === 0 ? (
                 <p className="text-sm text-slate-400">No upcoming reminders</p>
               ) : (
                 data.upcomingReminders.map((r) => (
-                  <div
-                    key={r.id}
-                    className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5"
-                  >
+                  <div key={r.id} className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5">
                     <p className="text-sm font-medium text-slate-800">{r.title}</p>
                     <p className="mt-0.5 text-xs text-slate-500">
                       {formatDateTime(r.dueDate)}
@@ -214,72 +285,60 @@ export default function DashboardPage() {
           </Card>
         </FadeIn>
 
-        <FadeIn delay={0.25} className="lg:col-span-1">
+        <FadeIn delay={0.3} className="lg:col-span-1">
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-teal-700" />
-                Upcoming Exams
+                <FlaskConical className="h-4 w-4 text-teal-700" />
+                Active Research
               </CardTitle>
-              <Link href="/exams" className="text-xs text-teal-700 hover:underline">
-                View all
-              </Link>
+              <Link href="/research" className="text-xs text-teal-700 hover:underline">View all</Link>
             </CardHeader>
             <CardContent className="space-y-3">
-              {data.upcomingExams.length === 0 ? (
-                <p className="text-sm text-slate-400">No upcoming exams</p>
+              {data.recentProjects.length === 0 ? (
+                <p className="text-sm text-slate-400">No projects yet</p>
               ) : (
-                data.upcomingExams.map((e) => (
-                  <div
-                    key={e.id}
-                    className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5"
-                  >
-                    <p className="text-sm font-medium text-slate-800">{e.title}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {e.course.code} · {formatDate(e.examDate)}
-                    </p>
-                  </div>
-                ))
+                data.recentProjects.map((p) => {
+                  const meta = getStatusMeta(PROJECT_STATUSES, p.status);
+                  return (
+                    <div key={p.id} className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5">
+                      <p className="text-sm font-medium text-slate-800">{p.title}</p>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <Badge className={meta.color}>{meta.label}</Badge>
+                        <span className="text-xs text-slate-400">
+                          {p.members.length} member{p.members.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </CardContent>
           </Card>
         </FadeIn>
 
-        <FadeIn delay={0.3} className="lg:col-span-1">
+        <FadeIn delay={0.35} className="lg:col-span-1">
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-teal-700" />
                 Recent Publications
               </CardTitle>
-              <Link href="/publications" className="text-xs text-teal-700 hover:underline">
-                View all
-              </Link>
+              <Link href="/publications" className="text-xs text-teal-700 hover:underline">View all</Link>
             </CardHeader>
             <CardContent className="space-y-3">
-              {data.recentPublications.length === 0 ? (
-                <p className="text-sm text-slate-400">No publications yet</p>
-              ) : (
-                data.recentPublications.map((p) => {
-                  const meta = getStatusMeta(PUBLICATION_STATUSES, p.status);
-                  return (
-                    <div
-                      key={p.id}
-                      className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5"
-                    >
-                      <p className="line-clamp-1 text-sm font-medium text-slate-800">
-                        {p.title}
-                      </p>
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <Badge className={meta.color}>{meta.label}</Badge>
-                        {p.journal && (
-                          <span className="text-xs text-slate-400">{p.journal}</span>
-                        )}
-                      </div>
+              {data.recentPublications.map((p) => {
+                const meta = getStatusMeta(PUBLICATION_STATUSES, p.status);
+                return (
+                  <div key={p.id} className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5">
+                    <p className="line-clamp-1 text-sm font-medium text-slate-800">{p.title}</p>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <Badge className={meta.color}>{meta.label}</Badge>
+                      {p.journal && <span className="text-xs text-slate-400">{p.journal}</span>}
                     </div>
-                  );
-                })
-              )}
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </FadeIn>

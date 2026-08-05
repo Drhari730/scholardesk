@@ -12,6 +12,11 @@ export async function GET() {
     people,
     courses,
     upcomingReminders,
+    pubStatusCounts,
+    taskStatusCounts,
+    projectStatusCounts,
+    examStatusCounts,
+    projects,
   ] = await Promise.all([
     prisma.researchProject.count({ where: { status: "ACTIVE" } }),
     prisma.task.count({ where: { status: { not: "COMPLETED" } } }),
@@ -34,17 +39,16 @@ export async function GET() {
       take: 8,
       include: { person: true },
     }),
+    prisma.publication.groupBy({ by: ["status"], _count: true }),
+    prisma.task.groupBy({ by: ["status"], _count: true }),
+    prisma.researchProject.groupBy({ by: ["status"], _count: true }),
+    prisma.exam.groupBy({ by: ["status"], _count: true }),
+    prisma.researchProject.findMany({
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      include: { members: { include: { person: true } } },
+    }),
   ]);
-
-  const pubStatusCounts = await prisma.publication.groupBy({
-    by: ["status"],
-    _count: true,
-  });
-
-  const taskStatusCounts = await prisma.task.groupBy({
-    by: ["status"],
-    _count: true,
-  });
 
   return NextResponse.json({
     stats: {
@@ -59,7 +63,10 @@ export async function GET() {
     recentPublications,
     upcomingExams,
     upcomingReminders,
+    recentProjects: projects,
     pubStatusCounts,
     taskStatusCounts,
+    projectStatusCounts,
+    examStatusCounts,
   });
 }
