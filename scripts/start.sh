@@ -2,7 +2,7 @@
 set -e
 
 echo "Applying database schema..."
-npx prisma db push --skip-generate
+npx prisma db push
 
 if [ "$SEED_DATABASE" = "true" ]; then
   echo "Seeding database..."
