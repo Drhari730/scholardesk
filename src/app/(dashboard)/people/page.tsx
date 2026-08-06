@@ -33,6 +33,12 @@ export default function PeoplePage() {
   const { data: people, loading, refetch } = useFetch<Person[]>("/api/people");
   const [showForm, setShowForm] = useState(false);
   const [roleFilter, setRoleFilter] = useState("ALL");
+  const [portalMsg, setPortalMsg] = useState<Record<string, string>>({});
+
+  const portalLoginUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/portal/login`
+      : "https://scholardesk-production-55cf.up.railway.app/portal/login";
 
   async function createPerson(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -56,8 +62,51 @@ export default function PeoplePage() {
       alert("PIN must be at least 4 characters");
       return;
     }
-    await apiPost("/api/people/portal", { personId, pin });
+    const res = await fetch("/api/people/portal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ personId, pin }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error ?? "Could not enable portal access");
+      return;
+    }
+    setPortalMsg((m) => ({
+      ...m,
+      [personId]: data.emailSent
+        ? "Portal enabled — login email sent with link & PIN."
+        : "Portal enabled — share the login link and PIN manually (email not sent).",
+    }));
     refetch();
+  }
+
+  async function resendPortalInvite(personId: string, pin: string) {
+    if (!pin || pin.length < 4) {
+      alert("Enter the PIN to include in the invite email");
+      return;
+    }
+    const res = await fetch("/api/people/portal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ personId, pin, resendInvite: true }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error ?? "Could not resend invite");
+      return;
+    }
+    setPortalMsg((m) => ({
+      ...m,
+      [personId]: data.emailSent ? "Invite email resent." : "Could not send email — share link manually.",
+    }));
+  }
+
+  async function copyPortalLink() {
+    await navigator.clipboard.writeText(portalLoginUrl);
+    alert("Portal login link copied!");
   }
 
   async function disablePortal(personId: string) {
@@ -207,16 +256,40 @@ export default function PeoplePage() {
                   <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-2">
                     <p className="text-xs font-medium text-slate-600">Team portal</p>
                     {person.portalEnabled ? (
-                      <div className="mt-1 flex items-center justify-between">
-                        <span className="text-xs text-emerald-600">Access enabled</span>
-                        <button onClick={() => disablePortal(person.id)} className="text-xs text-red-500">Disable</button>
+                      <div className="mt-1 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-emerald-600">Access enabled</span>
+                          <button onClick={() => disablePortal(person.id)} className="text-xs text-red-500">Disable</button>
+                        </div>
+                        <p className="text-[10px] text-slate-500 break-all">
+                          Login: {portalLoginUrl}
+                        </p>
+                        <div className="flex gap-1">
+                          <Input
+                            id={`resend-pin-${person.id}`}
+                            type="password"
+                            placeholder="PIN for resend"
+                            className="h-7 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              const el = document.getElementById(`resend-pin-${person.id}`) as HTMLInputElement;
+                              resendPortalInvite(person.id, el?.value ?? "");
+                            }}
+                          >
+                            Resend email
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <div className="mt-1 flex gap-1">
                         <Input
                           id={`pin-${person.id}`}
                           type="password"
-                          placeholder="Set PIN"
+                          placeholder="Set PIN (min 4)"
                           className="h-7 text-xs"
                         />
                         <Button
@@ -228,11 +301,20 @@ export default function PeoplePage() {
                             setPortalAccess(person.id, el?.value ?? "");
                           }}
                         >
-                          Enable
+                          Enable & email
                         </Button>
                       </div>
                     )}
-                    <p className="mt-1 text-[10px] text-slate-400">Login at /portal/login</p>
+                    <button
+                      type="button"
+                      onClick={copyPortalLink}
+                      className="mt-1 text-[10px] text-teal-700 underline"
+                    >
+                      Copy portal link
+                    </button>
+                    {portalMsg[person.id] && (
+                      <p className="mt-1 text-[10px] text-teal-700">{portalMsg[person.id]}</p>
+                    )}
                   </div>
                 )}
               </CardContent>

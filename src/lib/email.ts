@@ -296,6 +296,42 @@ export function welcomePersonEmail(params: {
   };
 }
 
+export function portalInviteEmail(params: {
+  name: string;
+  email: string;
+  pin: string;
+  supervisorName?: string;
+  portalUrl?: string;
+}) {
+  const supervisor = params.supervisorName ?? "Dr. Hari Prakash";
+  const portalUrl = params.portalUrl ?? `${APP_URL}/portal/login`;
+
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.name}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      ${supervisor} has enabled your <strong>ScholarDesk Team Portal</strong> access. You can view your assigned tasks, publications, and research projects.
+    </p>
+    <div style="background:#f0fdfa;border-left:4px solid #0d9488;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 12px;color:#0f5c5c;font-size:14px;font-weight:600;">How to sign in</p>
+      <p style="margin:0 0 8px;color:#475569;font-size:14px;"><strong>1.</strong> Open the portal:</p>
+      <p style="margin:0 0 16px;">
+        <a href="${portalUrl}" style="display:inline-block;background:#0d9488;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">Open Team Portal</a>
+      </p>
+      <p style="margin:0 0 8px;color:#64748b;font-size:13px;word-break:break-all;">${portalUrl}</p>
+      <p style="margin:16px 0 8px;color:#475569;font-size:14px;"><strong>2.</strong> Sign in with:</p>
+      <p style="margin:0 0 4px;color:#475569;font-size:14px;">Email: <strong>${params.email}</strong></p>
+      <p style="margin:0;color:#475569;font-size:14px;">PIN: <strong>${params.pin}</strong></p>
+    </div>
+    <p style="margin:0;color:#475569;font-size:14px;">
+      Keep your PIN private. Contact ${supervisor} if you need help signing in.
+    </p>
+  `;
+  return {
+    subject: `ScholarDesk Team Portal — your login details`,
+    html: baseTemplate(content),
+  };
+}
+
 export function projectCreatedEmail(params: {
   memberName: string;
   projectTitle: string;
