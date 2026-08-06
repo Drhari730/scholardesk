@@ -10,8 +10,16 @@ export const PROJECT_STATUSES = [
 export const TASK_STATUSES = [
   { value: "TODO", label: "To Do", color: "bg-slate-100 text-slate-700" },
   { value: "IN_PROGRESS", label: "In Progress", color: "bg-blue-100 text-blue-700" },
+  { value: "DELAYED", label: "Delayed", color: "bg-amber-100 text-amber-800" },
   { value: "BLOCKED", label: "Blocked", color: "bg-red-100 text-red-700" },
   { value: "COMPLETED", label: "Completed", color: "bg-emerald-100 text-emerald-700" },
+] as const;
+
+/** Status options team members can set from the portal */
+export const PORTAL_TASK_STATUSES = [
+  { value: "IN_PROGRESS", label: "In Progress", color: "bg-blue-100 text-blue-700" },
+  { value: "DELAYED", label: "Delayed", color: "bg-amber-100 text-amber-800" },
+  { value: "COMPLETED", label: "Finished", color: "bg-emerald-100 text-emerald-700" },
 ] as const;
 
 export const PUBLICATION_STATUSES = [

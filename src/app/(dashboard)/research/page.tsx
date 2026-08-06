@@ -19,6 +19,7 @@ import { useFetch, apiPost, apiPatch, apiDelete } from "@/lib/hooks";
 import { formatDate } from "@/lib/utils";
 import {
   PROJECT_STATUSES,
+  TASK_STATUSES,
   PRIORITIES,
   PERSON_ROLES,
   RESEARCH_PHASES,
@@ -422,7 +423,9 @@ export default function ResearchPage() {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      {project.tasks.slice(0, 4).map((task) => (
+                      {project.tasks.slice(0, 4).map((task) => {
+                        const taskMeta = getStatusMeta(TASK_STATUSES, task.status);
+                        return (
                         <div key={task.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50">
                           <button onClick={() => toggleTask(task.id, task.status)} className="text-slate-400 hover:text-teal-600">
                             {task.status === "COMPLETED" ? (
@@ -434,9 +437,13 @@ export default function ResearchPage() {
                           <span className={`flex-1 text-sm ${task.status === "COMPLETED" ? "text-slate-400 line-through" : "text-slate-700"}`}>
                             {task.title}
                           </span>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${taskMeta.color}`}>
+                            {taskMeta.label}
+                          </span>
                           {task.assignee && <span className="text-xs text-slate-400">{task.assignee.name}</span>}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 

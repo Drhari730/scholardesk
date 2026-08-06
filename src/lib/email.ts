@@ -280,6 +280,38 @@ export function attachmentSharedEmail(params: {
   };
 }
 
+export function taskStatusUpdateEmail(params: {
+  memberName: string;
+  taskTitle: string;
+  projectTitle?: string | null;
+  statusLabel: string;
+  supervisorName?: string;
+}) {
+  const projectLine = params.projectTitle
+    ? `<p style="margin:0 0 8px;color:#64748b;font-size:13px;">Project: ${escapeHtml(params.projectTitle)}</p>`
+    : "";
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Hello <strong>${escapeHtml(params.supervisorName ?? "Dr. Hari Prakash")}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      <strong>${escapeHtml(params.memberName)}</strong> updated a task status in ScholarDesk:
+    </p>
+    <div style="background:#f0fdfa;border-left:4px solid #0d9488;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:#0f5c5c;font-size:16px;font-weight:600;">${escapeHtml(params.taskTitle)}</p>
+      ${projectLine}
+      <p style="margin:0;color:#0d9488;font-size:14px;font-weight:600;">Status: ${escapeHtml(params.statusLabel)}</p>
+    </div>
+    <p style="margin:0 0 16px;text-align:center;">
+      <a href="${APP_URL}/research" style="display:inline-block;background:#0d9488;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;">
+        View in Dashboard
+      </a>
+    </p>
+  `;
+  return {
+    subject: `Task update: ${params.taskTitle} — ${params.statusLabel}`,
+    html: baseTemplate(content),
+  };
+}
+
 export function teamInstructionEmail(params: {
   memberName: string;
   projectTitle: string;

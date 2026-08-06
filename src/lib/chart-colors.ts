@@ -22,6 +22,7 @@ export const STATUS_COLORS: Record<string, string> = {
   PUBLISHED: "#0D9488",
   TODO: "#94A3B8",
   IN_PROGRESS: "#3B82F6",
+  DELAYED: "#F59E0B",
   BLOCKED: "#EF4444",
   COMPLETED: "#10B981",
   IDEA: "#8B5CF6",

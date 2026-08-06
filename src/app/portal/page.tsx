@@ -6,15 +6,23 @@ import { LogoMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, BookOpen, FlaskConical, CheckCircle2, Paperclip, Download } from "lucide-react";
+import { LogOut, BookOpen, FlaskConical, CheckCircle2, Paperclip, Download, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { TASK_STATUSES, PUBLICATION_STATUSES, getStatusMeta } from "@/lib/constants";
+import { TASK_STATUSES, PUBLICATION_STATUSES, PORTAL_TASK_STATUSES, getStatusMeta } from "@/lib/constants";
 
 type PortalAttachment = { id: string; filename: string; size: number; mimeType: string };
 
+type PortalTask = {
+  id: string;
+  title: string;
+  status: string;
+  dueDate: string | null;
+  project: { title: string } | null;
+};
+
 interface PortalData {
   person: { name: string; email: string | null; role: string };
-  tasks: Array<{ id: string; title: string; status: string; dueDate: string | null; project: { title: string } | null }>;
+  tasks: PortalTask[];
   publications: Array<{ id: string; title: string; status: string; role: string; journal: string | null; attachments: PortalAttachment[] }>;
   projects: Array<{ id: string; title: string; status: string; role: string; researchPhase: string; attachments: PortalAttachment[] }>;
 }
@@ -29,18 +37,61 @@ export default function PortalPage() {
   const router = useRouter();
   const [data, setData] = useState<PortalData | null>(null);
   const [loadError, setLoadError] = useState("");
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [taskMessage, setTaskMessage] = useState("");
+
+  async function loadDashboard() {
+    const r = await fetch("/api/portal/dashboard", { credentials: "include" });
+    if (!r.ok) throw new Error("unauthorized");
+    return r.json() as Promise<PortalData>;
+  }
 
   useEffect(() => {
-    fetch("/api/portal/dashboard", { credentials: "include" })
-      .then((r) => {
-        if (!r.ok) throw new Error("unauthorized");
-        return r.json();
-      })
+    loadDashboard()
       .then(setData)
       .catch(() => {
         setLoadError("Could not load your portal. Try signing in again from the email link.");
       });
   }, []);
+
+  async function updateTaskStatus(taskId: string, status: string) {
+    setUpdatingTaskId(taskId);
+    setTaskMessage("");
+    try {
+      const res = await fetch(`/api/portal/tasks/${taskId}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const updated = await res.json();
+      if (!res.ok) {
+        setTaskMessage(updated.error ?? "Could not update task");
+        return;
+      }
+
+      if (status === "COMPLETED") {
+        setData((prev) =>
+          prev ? { ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) } : prev
+        );
+        setTaskMessage("Task marked as finished — your supervisor can see this on their dashboard.");
+      } else {
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, status: updated.status } : t)),
+              }
+            : prev
+        );
+        setTaskMessage("Status updated — your supervisor can see this on their dashboard.");
+      }
+    } catch {
+      setTaskMessage("Could not update task — please try again.");
+    } finally {
+      setUpdatingTaskId(null);
+    }
+  }
 
   async function logout() {
     await fetch("/api/auth/portal", { method: "DELETE", credentials: "include" });
@@ -91,24 +142,59 @@ export default function PortalPage() {
         )}
 
         <section>
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-slate-800">
+          <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-slate-800">
             <CheckCircle2 className="h-5 w-5 text-teal-600" /> Your Tasks
           </h2>
+          <p className="mb-3 text-xs text-slate-500">
+            Tap a status below — no need to call or email. Your supervisor sees updates on their dashboard.
+          </p>
+          {taskMessage && (
+            <p className="mb-3 rounded-lg bg-teal-50 px-3 py-2 text-xs text-teal-800">{taskMessage}</p>
+          )}
           {data.tasks.length === 0 ? (
             <p className="text-sm text-slate-400">No pending tasks assigned to you.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {data.tasks.map((t) => {
                 const meta = getStatusMeta(TASK_STATUSES, t.status);
+                const isUpdating = updatingTaskId === t.id;
                 return (
                   <Card key={t.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div>
-                        <p className="font-medium text-slate-900">{t.title}</p>
-                        {t.project && <p className="text-xs text-slate-500">{t.project.title}</p>}
-                        {t.dueDate && <p className="text-xs text-slate-400">Due: {formatDate(t.dueDate)}</p>}
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-slate-900">{t.title}</p>
+                          {t.project && <p className="text-xs text-slate-500">{t.project.title}</p>}
+                          {t.dueDate && <p className="text-xs text-slate-400">Due: {formatDate(t.dueDate)}</p>}
+                        </div>
+                        <Badge className={`shrink-0 ${meta.color}`}>{meta.label}</Badge>
                       </div>
-                      <Badge className={meta.color}>{meta.label}</Badge>
+                      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                        {PORTAL_TASK_STATUSES.map((s) => {
+                          const active = t.status === s.value;
+                          return (
+                            <button
+                              key={s.value}
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => updateTaskStatus(t.id, s.value)}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                                active
+                                  ? `${s.color} ring-2 ring-teal-500/30`
+                                  : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                              } disabled:opacity-50`}
+                            >
+                              {isUpdating && active ? (
+                                <span className="flex items-center gap-1">
+                                  <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+                                </span>
+                              ) : (
+                                s.label
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </CardContent>
                   </Card>
                 );
