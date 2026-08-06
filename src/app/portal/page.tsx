@@ -6,15 +6,23 @@ import { LogoMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, BookOpen, FlaskConical, CheckCircle2 } from "lucide-react";
+import { LogOut, BookOpen, FlaskConical, CheckCircle2, Paperclip, Download } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { TASK_STATUSES, PUBLICATION_STATUSES, getStatusMeta } from "@/lib/constants";
+
+type PortalAttachment = { id: string; filename: string; size: number; mimeType: string };
 
 interface PortalData {
   person: { name: string; email: string | null; role: string };
   tasks: Array<{ id: string; title: string; status: string; dueDate: string | null; project: { title: string } | null }>;
-  publications: Array<{ id: string; title: string; status: string; role: string; journal: string | null }>;
-  projects: Array<{ id: string; title: string; status: string; role: string; researchPhase: string }>;
+  publications: Array<{ id: string; title: string; status: string; role: string; journal: string | null; attachments: PortalAttachment[] }>;
+  projects: Array<{ id: string; title: string; status: string; role: string; researchPhase: string; attachments: PortalAttachment[] }>;
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function PortalPage() {
@@ -125,6 +133,24 @@ export default function PortalPage() {
                       <p className="font-medium text-slate-900">{p.title}</p>
                       <p className="text-xs text-slate-500">{p.role.replace(/_/g, " ")} · {p.journal}</p>
                       <Badge className={`mt-2 ${meta.color}`}>{meta.label}</Badge>
+                      {p.attachments?.length > 0 && (
+                        <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
+                          <p className="flex items-center gap-1 text-xs font-medium text-slate-500">
+                            <Paperclip className="h-3 w-3" /> Shared files
+                          </p>
+                          {p.attachments.map((a) => (
+                            <a
+                              key={a.id}
+                              href={`/api/attachments/${a.id}`}
+                              className="flex items-center gap-2 text-sm text-teal-700 hover:underline"
+                            >
+                              <Download className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{a.filename}</span>
+                              <span className="shrink-0 text-xs text-slate-400">({formatFileSize(a.size)})</span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );
@@ -146,6 +172,24 @@ export default function PortalPage() {
                   <CardContent className="p-4">
                     <p className="font-medium text-slate-900">{p.title}</p>
                     <p className="text-xs text-slate-500">{p.role} · {p.researchPhase.replace(/_/g, " ")}</p>
+                    {p.attachments?.length > 0 && (
+                      <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
+                        <p className="flex items-center gap-1 text-xs font-medium text-slate-500">
+                          <Paperclip className="h-3 w-3" /> Shared files
+                        </p>
+                        {p.attachments.map((a) => (
+                          <a
+                            key={a.id}
+                            href={`/api/attachments/${a.id}`}
+                            className="flex items-center gap-2 text-sm text-teal-700 hover:underline"
+                          >
+                            <Download className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{a.filename}</span>
+                            <span className="shrink-0 text-xs text-slate-400">({formatFileSize(a.size)})</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}

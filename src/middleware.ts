@@ -29,7 +29,8 @@ function isPortalPath(pathname: string) {
   return (
     pathname.startsWith("/portal") ||
     pathname.startsWith("/api/portal") ||
-    pathname.startsWith("/api/auth/portal")
+    pathname.startsWith("/api/auth/portal") ||
+    pathname.startsWith("/api/attachments")
   );
 }
 

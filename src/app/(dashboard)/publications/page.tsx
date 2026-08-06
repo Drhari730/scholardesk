@@ -375,7 +375,7 @@ export default function PublicationsPage() {
                           )}
                         </div>
 
-                        <FileAttachments entityType="publication" entityId={pub.id} />
+                        <FileAttachments entityType="publication" entityId={pub.id} shareable />
 
                         <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-4">
                         <div className="mb-3 flex items-center justify-between">

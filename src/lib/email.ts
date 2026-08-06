@@ -249,6 +249,37 @@ function escapeHtml(text: string) {
     .replace(/>/g, "&gt;");
 }
 
+export function attachmentSharedEmail(params: {
+  memberName: string;
+  itemTitle: string;
+  itemType: string;
+  filename: string;
+  supervisorName?: string;
+}) {
+  const supervisor = params.supervisorName ?? "Dr. Hari Prakash";
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.memberName}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      ${supervisor} shared a new file on <strong>${params.itemTitle}</strong> (${params.itemType}):
+    </p>
+    <div style="background:#f0fdfa;border-left:4px solid #0d9488;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0;color:#0f5c5c;font-size:16px;font-weight:600;">📎 ${escapeHtml(params.filename)}</p>
+    </div>
+    <p style="margin:0 0 16px;text-align:center;">
+      <a href="${APP_URL}/portal/login" style="display:inline-block;background:#0d9488;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;">
+        Open Portal &amp; Download
+      </a>
+    </p>
+    <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">
+      Sign in to your Team Portal to download this file.
+    </p>
+  `;
+  return {
+    subject: `New file shared: ${params.filename}`,
+    html: baseTemplate(content),
+  };
+}
+
 export function teamInstructionEmail(params: {
   memberName: string;
   projectTitle: string;

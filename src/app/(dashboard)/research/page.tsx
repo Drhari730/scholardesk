@@ -405,7 +405,7 @@ export default function ResearchPage() {
                     </span>
                     <span>{completedTasks}/{project.tasks.length} tasks done</span>
                   </div>
-                  <FileAttachments entityType="project" entityId={project.id} />
+                  <FileAttachments entityType="project" entityId={project.id} shareable />
 
                   <div>
                     <div className="mb-2 flex items-center justify-between">

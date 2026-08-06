@@ -14,12 +14,17 @@ interface Attachment {
 export function FileAttachments({
   entityType,
   entityId,
+  shareable = false,
 }: {
   entityType: string;
   entityId: string;
+  /** Show team-sharing options for project/publication attachments */
+  shareable?: boolean;
 }) {
   const [files, setFiles] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [notifyTeam, setNotifyTeam] = useState(true);
+  const [lastUploadMsg, setLastUploadMsg] = useState("");
 
   useEffect(() => {
     if (!entityId) return;
@@ -35,14 +40,25 @@ export function FileAttachments({
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setLastUploadMsg("");
     const fd = new FormData();
     fd.append("file", file);
     fd.append("entityType", entityType);
     fd.append("entityId", entityId);
+    if (shareable && notifyTeam) {
+      fd.append("notifyTeam", "true");
+    }
     try {
       const res = await fetch("/api/attachments", { method: "POST", body: fd, credentials: "include" });
       const att = await res.json();
-      if (res.ok) setFiles((prev) => [att, ...prev]);
+      if (res.ok) {
+        setFiles((prev) => [att, ...prev]);
+        if (shareable && notifyTeam && att.emailsSent > 0) {
+          setLastUploadMsg(`Uploaded — team notified (${att.emailsSent} email${att.emailsSent === 1 ? "" : "s"})`);
+        } else if (shareable) {
+          setLastUploadMsg("Uploaded — team can download from their portal");
+        }
+      }
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -74,14 +90,27 @@ export function FileAttachments({
           <input type="file" className="hidden" onChange={upload} disabled={uploading} />
         </label>
       </div>
+      {shareable && (
+        <label className="mb-2 flex items-center gap-2 text-xs text-slate-600">
+          <input
+            type="checkbox"
+            checked={notifyTeam}
+            onChange={(e) => setNotifyTeam(e.target.checked)}
+          />
+          Notify team by email (they can also download in Team Portal)
+        </label>
+      )}
       {files.length === 0 ? (
-        <p className="text-xs text-slate-400">PDF, DOC, images up to 15MB</p>
+        <p className="text-xs text-slate-400">
+          PDF, DOC, images up to 15MB
+          {shareable ? " · visible to project team in their portal" : ""}
+        </p>
       ) : (
         <div className="space-y-1">
           {files.map((f) => (
             <div key={f.id} className="flex items-center justify-between rounded-lg bg-white px-2 py-1.5 text-xs">
               <span className="truncate text-slate-700">{f.filename}</span>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
                 <span className="text-slate-400">{formatSize(f.size)}</span>
                 <a href={`/api/attachments/${f.id}`} className="text-teal-600 hover:text-teal-800">
                   <Download className="h-3.5 w-3.5" />
@@ -94,6 +123,7 @@ export function FileAttachments({
           ))}
         </div>
       )}
+      {lastUploadMsg && <p className="mt-2 text-xs text-teal-700">{lastUploadMsg}</p>}
     </div>
   );
 }
