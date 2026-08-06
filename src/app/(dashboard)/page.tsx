@@ -317,7 +317,7 @@ export default function DashboardPage() {
                   Your Digital Health Portfolio
                 </CardTitle>
                 <p className="mt-1 text-sm text-slate-500">
-                  Tools & projects from your personal website — Onco Care, Prama AI, VEDA, Sangam & more
+                  Tools & projects from your personal website — Onco Care, Prama SRMA, VEDA, Sangam & more
                 </p>
               </div>
               <a
