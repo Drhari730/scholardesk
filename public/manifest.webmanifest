@@ -2,7 +2,7 @@
   "name": "ScholarDesk",
   "short_name": "ScholarDesk",
   "description": "Academic management for Dr. Hari Prakash",
-  "start_url": "/",
+  "start_url": "/login",
   "display": "standalone",
   "background_color": "#0f5c5c",
   "theme_color": "#0f5c5c",

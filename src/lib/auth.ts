@@ -5,7 +5,7 @@ import { verifyPasswordHash, hashPassword } from "@/lib/password";
 
 const COOKIE_NAME = "scholardesk_session";
 const PORTAL_COOKIE = "scholardesk_portal";
-const SESSION_DURATION = "7d";
+const SESSION_DURATION = "30d";
 
 export type Session =
   | { role: "owner" }
