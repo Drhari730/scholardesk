@@ -242,6 +242,41 @@ export function projectInviteEmail(params: {
   };
 }
 
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+export function teamInstructionEmail(params: {
+  memberName: string;
+  projectTitle: string;
+  instructions: string;
+  supervisorName?: string;
+  dueDate?: string;
+}) {
+  const supervisor = params.supervisorName ?? "Dr. Hari Prakash";
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.memberName}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      ${supervisor} has shared instructions for <strong>${params.projectTitle}</strong>:
+    </p>
+    <div style="background:#eff6ff;border-left:4px solid #3b82f6;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0;color:#1e3a8a;font-size:15px;line-height:1.6;white-space:pre-line;">${escapeHtml(params.instructions)}</p>
+      ${params.dueDate ? `<p style="margin:16px 0 0;color:#64748b;font-size:14px;"><strong>Please complete by:</strong> ${params.dueDate}</p>` : ""}
+    </div>
+    <p style="margin:0;color:#475569;font-size:14px;">
+      Log in to your <a href="${APP_URL}/portal/login" style="color:#0d9488;">Team Portal</a> to view your tasks and project updates.
+      Reply to this email if you have questions.
+    </p>
+  `;
+  return {
+    subject: `Instructions: ${params.projectTitle}`,
+    html: baseTemplate(content),
+  };
+}
+
 export function reminderEmail(params: {
   recipientName: string;
   title: string;

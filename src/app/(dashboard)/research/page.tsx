@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Users, CheckCircle2, Circle, UserPlus, X, Pencil } from "lucide-react";
+import { Plus, Users, CheckCircle2, Circle, UserPlus, X, Pencil, Send } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,7 +66,43 @@ export default function ResearchPage() {
   const [showTaskForm, setShowTaskForm] = useState<string | null>(null);
   const [showMemberForm, setShowMemberForm] = useState<string | null>(null);
   const [showNewPersonForm, setShowNewPersonForm] = useState<string | null>(null);
+  const [showInstructionForm, setShowInstructionForm] = useState<string | null>(null);
+  const [instructionMsg, setInstructionMsg] = useState("");
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
+
+  async function sendInstructions(e: React.FormEvent<HTMLFormElement>, projectId: string) {
+    e.preventDefault();
+    setInstructionMsg("");
+    const fd = new FormData(e.currentTarget);
+    const sendToAll = fd.get("sendToAll") === "on";
+    const personId = fd.get("personId");
+    if (!sendToAll && !personId) {
+      setInstructionMsg("Select a team member or tick 'Send to all team members'");
+      return;
+    }
+    const res = await fetch(`/api/projects/${projectId}/instructions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        message: fd.get("message"),
+        personId: sendToAll ? undefined : fd.get("personId"),
+        sendToAll,
+        createTask: fd.get("createTask") === "on",
+        taskTitle: fd.get("taskTitle"),
+        dueDate: fd.get("dueDate") || undefined,
+        priority: fd.get("priority") || "MEDIUM",
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setInstructionMsg(data.error ?? "Could not send instructions");
+      return;
+    }
+    setInstructionMsg(data.message ?? "Instructions sent!");
+    setShowInstructionForm(null);
+    refetch();
+  }
 
   async function createProject(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -363,9 +399,16 @@ export default function ResearchPage() {
                   <div>
                     <div className="mb-2 flex items-center justify-between">
                       <p className="text-sm font-medium text-slate-700">Tasks</p>
-                      <Button size="sm" variant="ghost" onClick={() => setShowTaskForm(project.id)}>
-                        <Plus className="h-3 w-3" /> Add Task
-                      </Button>
+                      <div className="flex gap-1">
+                        {project.members.length > 0 && (
+                          <Button size="sm" variant="outline" onClick={() => setShowInstructionForm(project.id)}>
+                            <Send className="h-3 w-3" /> Send Instruction
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => setShowTaskForm(project.id)}>
+                          <Plus className="h-3 w-3" /> Assign Task
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-1.5">
                       {project.tasks.slice(0, 4).map((task) => (
@@ -523,9 +566,71 @@ export default function ResearchPage() {
         </DialogRoot>
       )}
 
+      {showInstructionForm && (
+        <DialogRoot open={!!showInstructionForm} onOpenChange={() => { setShowInstructionForm(null); setInstructionMsg(""); }}>
+          <DialogContent title="Send Instruction to Team">
+            <form onSubmit={(e) => sendInstructions(e, showInstructionForm)} className="space-y-4">
+              <p className="text-sm text-slate-500">
+                Project: <strong>{projects?.find((p) => p.id === showInstructionForm)?.title}</strong>
+              </p>
+              <div>
+                <Label>Instructions</Label>
+                <Textarea
+                  name="message"
+                  required
+                  className="mt-1"
+                  rows={5}
+                  placeholder="Write clear instructions for your team — what to do, how to do it, deadlines, files needed..."
+                />
+              </div>
+              <div>
+                <Label>Send to</Label>
+                <Select name="personId" className="mt-1" defaultValue="">
+                  <option value="">Select one member</option>
+                  {projects
+                    ?.find((p) => p.id === showInstructionForm)
+                    ?.members.filter((m) => m.person.email)
+                    .map((m) => (
+                      <option key={m.person.id} value={m.person.id}>
+                        {m.person.name} ({m.person.email})
+                      </option>
+                    ))}
+                </Select>
+                <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                  <input type="checkbox" name="sendToAll" />
+                  Send to <strong>all</strong> team members on this project
+                </label>
+              </div>
+              <div>
+                <Label>Deadline (optional)</Label>
+                <Input name="dueDate" type="date" className="mt-1" />
+              </div>
+              <label className="flex items-center gap-2 rounded-xl border border-teal-100 bg-teal-50/40 p-3 text-sm text-slate-700">
+                <input type="checkbox" name="createTask" defaultChecked />
+                <span>
+                  Also <strong>create a task</strong> in portal so they can see it when they log in
+                </span>
+              </label>
+              <div>
+                <Label>Task title (if creating task)</Label>
+                <Input name="taskTitle" className="mt-1" placeholder="e.g. Complete data entry for Week 1" />
+              </div>
+              {instructionMsg && (
+                <p className={`text-sm ${instructionMsg.includes("sent") ? "text-teal-700" : "text-red-600"}`}>
+                  {instructionMsg}
+                </p>
+              )}
+              <Button type="submit" className="w-full gap-2">
+                <Send className="h-4 w-4" /> Send Instruction Email
+              </Button>
+            </form>
+          </DialogContent>
+        </DialogRoot>
+      )}
+
       {showTaskForm && (
         <DialogRoot open={!!showTaskForm} onOpenChange={() => setShowTaskForm(null)}>
-          <DialogContent title="Add Task">
+          <DialogContent title="Assign Task to Team Member">
             <form onSubmit={(e) => createTask(e, showTaskForm)} className="space-y-4">
               <div><Label>Task Title</Label><Input name="title" required className="mt-1" /></div>
               <div><Label>Description</Label><Textarea name="description" className="mt-1" /></div>
@@ -555,7 +660,7 @@ export default function ResearchPage() {
               <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" name="sendEmail" defaultChecked /> Email assignee now
               </label>
-              <Button type="submit" className="w-full">Add Task</Button>
+              <Button type="submit" className="w-full">Assign Task & Email</Button>
             </form>
           </DialogContent>
         </DialogRoot>
