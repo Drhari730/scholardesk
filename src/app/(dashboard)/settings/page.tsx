@@ -29,6 +29,17 @@ interface SettingsData {
 
 export default function SettingsPage() {
   const { data: settings, loading, refetch } = useFetch<SettingsData>("/api/settings");
+  const { data: emailStatus } = useFetch<{
+    from: string;
+    replyTo?: string;
+    deliverability?: {
+      domain?: string;
+      status?: string;
+      spfVerified?: boolean;
+      dkimVerified?: boolean;
+      hint?: string;
+    };
+  }>("/api/email/status");
   const [saved, setSaved] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState("");
   const [exporting, setExporting] = useState(false);
@@ -149,8 +160,11 @@ export default function SettingsPage() {
                   <Input name="institution" defaultValue={settings.institution ?? ""} className="mt-1" />
                 </div>
                 <div>
-                  <Label>Your Email (for planning reminders & copies)</Label>
+                  <Label>Your Email (for planning reminders, copies & reply-to address)</Label>
                   <Input name="email" type="email" defaultValue={settings.email ?? ""} className="mt-1" />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Team members can reply directly to this address when they receive ScholarDesk emails.
+                  </p>
                 </div>
                 <div>
                   <Label>Email signature (appended to outgoing emails)</Label>
@@ -272,6 +286,42 @@ export default function SettingsPage() {
           </FadeIn>
 
           <FadeIn delay={0.2}>
+            <Card className="border-teal-100 bg-teal-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Mail className="h-4 w-4 text-teal-700" /> Email Deliverability
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-slate-600">
+                <p>
+                  Sending from <strong>{emailStatus?.from ?? "—"}</strong>
+                  {emailStatus?.replyTo ? (
+                    <> · Replies go to <strong>{emailStatus.replyTo}</strong></>
+                  ) : (
+                    <> · <span className="text-amber-700">Add your email above so replies reach you</span></>
+                  )}
+                </p>
+                {emailStatus?.deliverability?.domain && (
+                  <p>
+                    Domain <strong>{emailStatus.deliverability.domain}</strong>:{" "}
+                    <span className={emailStatus.deliverability.status === "verified" ? "text-emerald-700" : "text-amber-700"}>
+                      {emailStatus.deliverability.status}
+                    </span>
+                    {emailStatus.deliverability.spfVerified !== undefined && (
+                      <> · SPF {emailStatus.deliverability.spfVerified ? "✓" : "✗"} · DKIM {emailStatus.deliverability.dkimVerified ? "✓" : "✗"}</>
+                    )}
+                  </p>
+                )}
+                <ul className="list-disc space-y-1 pl-5 text-xs text-slate-500">
+                  <li>Ask team members to mark the first email as <strong>Not Spam</strong> in Gmail.</li>
+                  <li>Keep your profile email set to your personal/work inbox (not info@).</li>
+                  <li>Verify DNS at <a href="https://resend.com/domains" className="text-teal-700 underline" target="_blank" rel="noreferrer">resend.com/domains</a> if emails keep landing in spam.</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </FadeIn>
+
+          <FadeIn delay={0.25}>
             <Card>
               <CardContent className="flex items-center gap-3 p-4 text-sm text-slate-500">
                 <Settings className="h-5 w-5 shrink-0 text-slate-400" />

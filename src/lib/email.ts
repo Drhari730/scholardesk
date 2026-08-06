@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-const FROM_EMAIL =
+export const FROM_EMAIL =
   process.env.EMAIL_FROM ?? "ScholarDesk <onboarding@resend.dev>";
 
 const APP_URL =
@@ -13,18 +13,61 @@ export function isEmailConfigured(): boolean {
   return !!process.env.RESEND_API_KEY;
 }
 
+export function getFromDomain(): string | null {
+  const match = FROM_EMAIL.match(/@([a-zA-Z0-9.-]+)>?$/);
+  return match?.[1] ?? null;
+}
+
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export async function getReplyToEmail(): Promise<string | undefined> {
+  if (process.env.REPLY_TO_EMAIL) return process.env.REPLY_TO_EMAIL;
+  const settings = await prisma.appSettings.findUnique({ where: { id: "default" } });
+  if (settings?.email) return settings.email;
+  const fromMatch = FROM_EMAIL.match(/<([^>]+)>/);
+  return fromMatch?.[1];
+}
+
 export interface SendEmailParams {
   to: string;
   subject: string;
   html: string;
+  text?: string;
   attachments?: Array<{ filename: string; content: string }>;
+  category?: "team" | "task" | "reminder" | "planning" | "digest" | "backup";
 }
 
-export async function sendEmail({ to, subject, html, attachments }: SendEmailParams) {
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  text,
+  attachments,
+  category,
+}: SendEmailParams) {
   if (!resend) {
     console.warn("[email] RESEND_API_KEY not set — skipping email to", to);
     return { success: false, reason: "not_configured" };
   }
+
+  const replyTo = await getReplyToEmail();
+  const plainText = text ?? htmlToPlainText(html);
 
   try {
     const { data, error } = await resend.emails.send({
@@ -32,6 +75,12 @@ export async function sendEmail({ to, subject, html, attachments }: SendEmailPar
       to: [to],
       subject,
       html,
+      text: plainText,
+      replyTo,
+      headers: {
+        "X-Entity-Ref-ID": `scholardesk-${category ?? "general"}-${Date.now()}`,
+      },
+      tags: category ? [{ name: "category", value: category }] : undefined,
       attachments,
     });
 
@@ -45,6 +94,50 @@ export async function sendEmail({ to, subject, html, attachments }: SendEmailPar
     console.error("[email] Exception:", err);
     return { success: false, reason: String(err) };
   }
+}
+
+export async function getDomainDeliverabilityStatus() {
+  if (!resend) {
+    return { configured: false, domain: getFromDomain(), status: "not_configured" as const };
+  }
+
+  const domainName = getFromDomain();
+  if (!domainName) {
+    return { configured: true, domain: null, status: "unknown_from" as const };
+  }
+
+  const { data, error } = await resend.domains.list();
+  if (error || !data?.data?.length) {
+    return {
+      configured: true,
+      domain: domainName,
+      status: "domain_not_in_resend" as const,
+      hint: "Add and verify your domain at resend.com/domains",
+    };
+  }
+
+  const domain = data.data.find((d) => d.name === domainName);
+  if (!domain) {
+    return {
+      configured: true,
+      domain: domainName,
+      status: "domain_not_in_resend" as const,
+      hint: `Verify ${domainName} in your Resend dashboard`,
+    };
+  }
+
+  const detail = await resend.domains.get(domain.id);
+  const records = detail.data?.records ?? [];
+
+  return {
+    configured: true,
+    domain: domainName,
+    status: detail.data?.status ?? domain.status,
+    spfVerified: records.some((r) => r.record === "SPF" && r.status === "verified"),
+    dkimVerified: records.some((r) => r.record === "DKIM" && r.status === "verified"),
+    replyTo: await getReplyToEmail(),
+    from: FROM_EMAIL,
+  };
 }
 
 function baseTemplate(
@@ -173,16 +266,32 @@ export function reminderEmail(params: {
   };
 }
 
-export function welcomePersonEmail(params: { name: string; role: string }) {
+export function welcomePersonEmail(params: {
+  name: string;
+  role: string;
+  supervisorName?: string;
+  institution?: string;
+  replyEmail?: string;
+}) {
+  const supervisor = params.supervisorName ?? "Dr. Hari Prakash";
+  const institution = params.institution ?? "MSRUAS, Bengaluru";
+  const replyEmail = params.replyEmail ?? "your supervisor";
+
   const content = `
     <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.name}</strong>,</p>
     <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
-      You have been added to Dr. Hari Prakash's academic team on ScholarDesk as a <strong>${params.role}</strong>.
+      ${supervisor} has added you to the ScholarDesk research team at <strong>${institution}</strong> as a <strong>${params.role}</strong>.
     </p>
-    <p style="margin:0;color:#475569;font-size:14px;">You may receive task assignments, publication updates, and reminders via email. Please respond promptly to any communications.</p>
+    <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.6;">
+      Through ScholarDesk you may receive task assignments, publication updates, and deadline reminders related to your research work.
+    </p>
+    <p style="margin:0;color:#475569;font-size:14px;">
+      If you have questions, reply to this email or contact ${supervisor} at
+      <a href="mailto:${replyEmail}" style="color:#0d9488;">${replyEmail}</a>.
+    </p>
   `;
   return {
-    subject: `Welcome to Dr. Hari Prakash's Research Team`,
+    subject: `ScholarDesk team update — ${params.name} (${params.role})`,
     html: baseTemplate(content),
   };
 }

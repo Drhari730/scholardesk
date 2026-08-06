@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       journal: member.publication.journal ?? undefined,
       status: statusLabel,
     });
-    const result = await sendEmail({ to: member.person.email, ...template });
+    const result = await sendEmail({ to: member.person.email, ...template, category: "team" });
     emailSent = result.success;
   }
 

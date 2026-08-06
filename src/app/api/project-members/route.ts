@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       role: roleLabel,
       description: member.project.description ?? undefined,
     });
-    const result = await sendEmail({ to: member.person.email, ...template });
+    const result = await sendEmail({ to: member.person.email, ...template, category: "team" });
     emailSent = result.success;
   }
 

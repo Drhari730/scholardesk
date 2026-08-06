@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmail, welcomePersonEmail } from "@/lib/email";
+import { sendEmail, welcomePersonEmail, getEmailBranding, getReplyToEmail } from "@/lib/email";
 import { PERSON_ROLES } from "@/lib/constants";
 
 export async function GET() {
@@ -30,8 +30,17 @@ export async function POST(req: NextRequest) {
   let emailSent = false;
   if (body.sendEmail && person.email) {
     const roleLabel = PERSON_ROLES.find((r) => r.value === person.role)?.label ?? person.role;
-    const template = welcomePersonEmail({ name: person.name, role: roleLabel });
-    const result = await sendEmail({ to: person.email, ...template });
+    const branding = await getEmailBranding();
+    const settings = await prisma.appSettings.findUnique({ where: { id: "default" } });
+    const replyEmail = await getReplyToEmail();
+    const template = welcomePersonEmail({
+      name: person.name,
+      role: roleLabel,
+      supervisorName: branding.name,
+      institution: settings?.institution ?? "MSRUAS, Bengaluru",
+      replyEmail: replyEmail ?? undefined,
+    });
+    const result = await sendEmail({ to: person.email, ...template, category: "team" });
     emailSent = result.success;
   }
 
