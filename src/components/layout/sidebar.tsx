@@ -18,7 +18,9 @@ import {
   Menu,
   X,
   ClipboardList,
+  LogOut,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +39,14 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  async function logout() {
+    await fetch("/api/auth/login", { method: "DELETE", credentials: "include" });
+    router.push("/login");
+    router.refresh();
+  }
 
   const NavContent = () => (
     <>
@@ -85,7 +94,14 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-teal-800/30 p-4">
+      <div className="border-t border-teal-800/30 p-4 space-y-2">
+        <button
+          onClick={logout}
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-teal-200/70 transition-colors hover:bg-white/5 hover:text-white"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </button>
         <p className="text-xs text-teal-200/50">
           Public Health · Research & Teaching
         </p>

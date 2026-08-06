@@ -16,7 +16,11 @@ export function useFetch<T>(url: string) {
   const refetch = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { credentials: "include" });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
       if (!res.ok) throw new Error("Failed to fetch");
       setData(await res.json());
       setError(null);
@@ -39,7 +43,12 @@ export async function apiPost(url: string, body: unknown) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    credentials: "include",
   });
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
   if (!res.ok) throw new Error("Request failed");
   return res.json();
 }
@@ -49,13 +58,22 @@ export async function apiPatch(url: string, body: unknown) {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    credentials: "include",
   });
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
   if (!res.ok) throw new Error("Request failed");
   return res.json();
 }
 
 export async function apiDelete(url: string) {
-  const res = await fetch(url, { method: "DELETE" });
+  const res = await fetch(url, { method: "DELETE", credentials: "include" });
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
   if (!res.ok) throw new Error("Request failed");
   return res.json();
 }

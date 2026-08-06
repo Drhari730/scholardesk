@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: "ScholarDesk — Dr. Hari Prakash",
   description:
     "Personal academic management suite for research, teaching, publications, and reminders.",
+  robots: { index: false, follow: false },
   icons: {
     icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
     apple: [{ url: "/logo.svg", type: "image/svg+xml" }],

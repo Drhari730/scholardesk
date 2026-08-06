@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, Download, ExternalLink, Copy, Check } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,12 +20,24 @@ interface CalendarEvent {
 
 export default function CalendarPage() {
   const [copied, setCopied] = useState(false);
+  const [icalUrl, setIcalUrl] = useState("");
+  const [webcalUrl, setWebcalUrl] = useState("");
   const { data: exams } = useFetch<Array<{ id: string; title: string; examDate: string; venue: string | null; course: { code: string } }>>("/api/exams");
   const { data: reminders } = useFetch<Array<{ id: string; title: string; dueDate: string; message: string | null; isCompleted: boolean }>>("/api/reminders");
 
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const icalUrl = `${baseUrl}/api/calendar/ical`;
-  const googleSubscribeUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(icalUrl.replace("https://", "webcal://").replace("http://", "webcal://"))}`;
+  useEffect(() => {
+    fetch("/api/calendar/feed-url", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.feedUrl) setIcalUrl(d.feedUrl);
+        if (d.webcalUrl) setWebcalUrl(d.webcalUrl);
+      })
+      .catch(() => {});
+  }, []);
+
+  const googleSubscribeUrl = webcalUrl
+    ? `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcalUrl)}`
+    : "#";
 
   async function copyFeedUrl() {
     await navigator.clipboard.writeText(icalUrl);
@@ -72,7 +84,9 @@ export default function CalendarPage() {
               </p>
               <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <p className="text-xs font-medium text-slate-500">Calendar feed URL</p>
-                <p className="mt-1 break-all text-sm text-slate-800">{icalUrl || "/api/calendar/ical"}</p>
+                <p className="mt-1 break-all text-sm text-slate-800">
+                  {icalUrl || "Sign in to load your private calendar feed URL"}
+                </p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <a href={googleSubscribeUrl} target="_blank" rel="noopener noreferrer">

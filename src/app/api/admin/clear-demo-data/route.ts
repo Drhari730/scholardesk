@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSessionFromRequest } from "@/lib/auth";
 
-function authorize(req: NextRequest) {
+async function authorize(req: NextRequest) {
+  const session = await getSessionFromRequest(req);
+  if (session) return true;
+
   const secret = req.headers.get("authorization")?.replace("Bearer ", "");
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && secret !== cronSecret) return false;
-  return true;
+  return !!(process.env.CRON_SECRET && secret === process.env.CRON_SECRET);
 }
 
 export async function POST(req: NextRequest) {
-  if (!authorize(req)) {
+  if (!(await authorize(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
