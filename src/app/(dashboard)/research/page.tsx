@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Users, CheckCircle2, Circle, UserPlus, X } from "lucide-react";
+import { Plus, Users, CheckCircle2, Circle, UserPlus, X, Pencil } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +62,7 @@ export default function ResearchPage() {
   const { data: projects, loading, refetch } = useFetch<Project[]>("/api/projects");
   const { data: people, refetch: refetchPeople } = useFetch<Person[]>("/api/people");
   const [showProjectForm, setShowProjectForm] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showTaskForm, setShowTaskForm] = useState<string | null>(null);
   const [showMemberForm, setShowMemberForm] = useState<string | null>(null);
   const [showNewPersonForm, setShowNewPersonForm] = useState<string | null>(null);
@@ -79,6 +80,34 @@ export default function ResearchPage() {
       memberIds,
     });
     setShowProjectForm(false);
+    refetch();
+  }
+
+  function toDateInputValue(date: string | null) {
+    if (!date) return "";
+    return date.split("T")[0];
+  }
+
+  async function updateProject(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingProject) return;
+    const fd = new FormData(e.currentTarget);
+    await apiPatch(`/api/projects/${editingProject.id}`, {
+      title: fd.get("title"),
+      description: fd.get("description") || null,
+      aims: fd.get("aims") || null,
+      objectives: fd.get("objectives") || null,
+      methodology: fd.get("methodology") || null,
+      studyState: fd.get("studyState") || null,
+      researchPhase: fd.get("researchPhase"),
+      timeline: fd.get("timeline") || null,
+      startDate: fd.get("startDate") || null,
+      endDate: fd.get("endDate") || null,
+      status: fd.get("status"),
+      priority: fd.get("priority"),
+      sendEmail: false,
+    });
+    setEditingProject(null);
     refetch();
   }
 
@@ -358,6 +387,9 @@ export default function ResearchPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-2">
+                    <Button size="sm" variant="outline" onClick={() => setEditingProject(project)}>
+                      <Pencil className="h-3 w-3" /> Edit Project
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setSelectedProject(isManaging ? null : project.id)}>
                       {isManaging ? "Hide Team" : "Manage Team"}
                     </Button>
@@ -408,6 +440,87 @@ export default function ResearchPage() {
             );
           })}
         </div>
+      )}
+
+      {editingProject && (
+        <DialogRoot open={!!editingProject} onOpenChange={(open) => !open && setEditingProject(null)}>
+          <DialogContent title="Edit Research Project">
+            <form onSubmit={updateProject} className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+              <div>
+                <Label>Project Title</Label>
+                <Input name="title" required className="mt-1" defaultValue={editingProject.title} />
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Textarea name="description" className="mt-1" defaultValue={editingProject.description ?? ""} />
+              </div>
+              <div>
+                <Label>Aims</Label>
+                <Textarea name="aims" className="mt-1" defaultValue={editingProject.aims ?? ""} />
+              </div>
+              <div>
+                <Label>Objectives</Label>
+                <Textarea name="objectives" className="mt-1" defaultValue={editingProject.objectives ?? ""} />
+              </div>
+              <div>
+                <Label>Methodology</Label>
+                <Textarea name="methodology" className="mt-1" defaultValue={editingProject.methodology ?? ""} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Study State / Region</Label>
+                  <Select name="studyState" className="mt-1" defaultValue={editingProject.studyState ?? ""}>
+                    <option value="">Select state</option>
+                    {INDIAN_STATES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label>Research Phase</Label>
+                  <Select name="researchPhase" className="mt-1" defaultValue={editingProject.researchPhase ?? "PROTOCOL_DEVELOPMENT"}>
+                    {RESEARCH_PHASES.map((p) => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Timeline & Milestones</Label>
+                <Textarea name="timeline" className="mt-1" defaultValue={editingProject.timeline ?? ""} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Start Date</Label>
+                  <Input name="startDate" type="date" className="mt-1" defaultValue={toDateInputValue(editingProject.startDate)} />
+                </div>
+                <div>
+                  <Label>End Date</Label>
+                  <Input name="endDate" type="date" className="mt-1" defaultValue={toDateInputValue(editingProject.endDate)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Status</Label>
+                  <Select name="status" className="mt-1" defaultValue={editingProject.status}>
+                    {PROJECT_STATUSES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label>Priority</Label>
+                  <Select name="priority" className="mt-1" defaultValue={editingProject.priority}>
+                    {PRIORITIES.map((p) => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+              <Button type="submit" className="w-full">Save Changes</Button>
+            </form>
+          </DialogContent>
+        </DialogRoot>
       )}
 
       {showTaskForm && (
