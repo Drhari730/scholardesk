@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmail, welcomePersonEmail, getEmailBranding, getReplyToEmail } from "@/lib/email";
+import {
+  sendEmail,
+  welcomePersonEmail,
+  portalInviteEmail,
+  getEmailBranding,
+  getReplyToEmail,
+  isEmailConfigured,
+} from "@/lib/email";
+import { setPortalPin, generatePortalPin, createPortalMagicToken } from "@/lib/auth";
 import { PERSON_ROLES } from "@/lib/constants";
+
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://scholardesk-production-55cf.up.railway.app";
 
 export async function GET() {
   const people = await prisma.person.findMany({
@@ -44,5 +55,32 @@ export async function POST(req: NextRequest) {
     emailSent = result.success;
   }
 
-  return NextResponse.json({ ...person, emailSent }, { status: 201 });
+  let portalEnabled = false;
+  let portalEmailSent = false;
+  if (body.enablePortal && person.email) {
+    const pin = generatePortalPin();
+    await setPortalPin(person.id, pin);
+    portalEnabled = true;
+
+    if (isEmailConfigured()) {
+      const magicToken = await createPortalMagicToken(person.id, person.name);
+      const magicLoginUrl = `${APP_URL}/api/auth/portal/magic?token=${encodeURIComponent(magicToken)}`;
+      const branding = await getEmailBranding();
+      const template = portalInviteEmail({
+        name: person.name,
+        email: person.email,
+        pin,
+        supervisorName: branding.name,
+        portalUrl: `${APP_URL}/portal/login`,
+        magicLoginUrl,
+      });
+      const result = await sendEmail({ to: person.email, ...template, category: "team" });
+      portalEmailSent = result.success;
+    }
+  }
+
+  return NextResponse.json(
+    { ...person, emailSent, portalEnabled, portalEmailSent },
+    { status: 201 }
+  );
 }

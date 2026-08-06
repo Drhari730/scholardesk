@@ -40,6 +40,33 @@ export async function createPortalToken(personId: string, personName: string) {
     .sign(getSecret());
 }
 
+/** Long-lived link for one-click portal login from email */
+export async function createPortalMagicToken(personId: string, personName: string) {
+  return new SignJWT({ role: "portal", personId, personName, magic: true })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("90d")
+    .sign(getSecret());
+}
+
+export async function verifyPortalMagicToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, getSecret());
+    if (payload.role !== "portal" || !payload.personId || !payload.magic) return null;
+    const person = await prisma.person.findFirst({
+      where: { id: String(payload.personId), portalEnabled: true },
+    });
+    if (!person) return null;
+    return person;
+  } catch {
+    return null;
+  }
+}
+
+export function generatePortalPin(): string {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
 export async function verifySessionToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, getSecret());

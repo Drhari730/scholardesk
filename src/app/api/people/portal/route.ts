@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOwner } from "@/lib/auth";
-import { setPortalPin } from "@/lib/auth";
+import { setPortalPin, generatePortalPin, createPortalMagicToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   sendEmail,
@@ -9,19 +9,33 @@ import {
   isEmailConfigured,
 } from "@/lib/email";
 
-const PORTAL_URL =
-  `${process.env.NEXT_PUBLIC_APP_URL ?? "https://scholardesk-production-55cf.up.railway.app"}/portal/login`;
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://scholardesk-production-55cf.up.railway.app";
+const PORTAL_URL = `${APP_URL}/portal/login`;
 
-async function sendPortalInvite(personId: string, pin: string) {
+async function enablePortalAndSendEmail(personId: string) {
   const person = await prisma.person.findUnique({ where: { id: personId } });
-  if (!person?.email) {
-    return { emailSent: false, reason: "no_email" as const };
+  if (!person) {
+    return { success: false, error: "Person not found" };
   }
+  if (!person.email) {
+    return { success: false, error: "Add an email address first" };
+  }
+
+  const pin = generatePortalPin();
+  await setPortalPin(personId, pin);
 
   if (!isEmailConfigured()) {
-    return { emailSent: false, reason: "email_not_configured" as const };
+    return {
+      success: true,
+      emailSent: false,
+      portalUrl: PORTAL_URL,
+      message: "Portal enabled but email is not configured on the server.",
+    };
   }
 
+  const magicToken = await createPortalMagicToken(person.id, person.name);
+  const magicLoginUrl = `${APP_URL}/api/auth/portal/magic?token=${encodeURIComponent(magicToken)}`;
   const branding = await getEmailBranding();
   const template = portalInviteEmail({
     name: person.name,
@@ -29,6 +43,7 @@ async function sendPortalInvite(personId: string, pin: string) {
     pin,
     supervisorName: branding.name,
     portalUrl: PORTAL_URL,
+    magicLoginUrl,
   });
   const result = await sendEmail({
     to: person.email,
@@ -36,7 +51,15 @@ async function sendPortalInvite(personId: string, pin: string) {
     category: "team",
   });
 
-  return { emailSent: result.success, reason: result.success ? undefined : result.reason };
+  return {
+    success: true,
+    emailSent: result.success,
+    portalUrl: PORTAL_URL,
+    sentTo: person.email,
+    message: result.success
+      ? `Login email sent to ${person.email}`
+      : `Portal enabled but email failed to send. Share the portal link manually.`,
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -45,7 +68,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { personId, pin, portalEnabled, resendInvite } = body;
+  const { personId, portalEnabled, resendInvite } = body;
 
   if (!personId) {
     return NextResponse.json({ error: "personId required" }, { status: 400 });
@@ -62,33 +85,12 @@ export async function POST(req: NextRequest) {
   if (resendInvite) {
     const person = await prisma.person.findUnique({ where: { id: personId } });
     if (!person?.portalEnabled) {
-      return NextResponse.json({ error: "Portal access is not enabled for this person" }, { status: 400 });
+      return NextResponse.json({ error: "Enable portal first" }, { status: 400 });
     }
-    if (!pin || String(pin).length < 4) {
-      return NextResponse.json(
-        { error: "Enter the current PIN to resend the invite email" },
-        { status: 400 }
-      );
-    }
-    await setPortalPin(personId, String(pin));
-    const invite = await sendPortalInvite(personId, String(pin));
-    return NextResponse.json({
-      success: true,
-      portalUrl: PORTAL_URL,
-      ...invite,
-    });
+    const result = await enablePortalAndSendEmail(personId);
+    return NextResponse.json(result, { status: result.success ? 200 : 400 });
   }
 
-  if (!pin || String(pin).length < 4) {
-    return NextResponse.json({ error: "PIN must be at least 4 characters" }, { status: 400 });
-  }
-
-  await setPortalPin(personId, String(pin));
-  const invite = await sendPortalInvite(personId, String(pin));
-
-  return NextResponse.json({
-    success: true,
-    portalUrl: PORTAL_URL,
-    ...invite,
-  });
+  const result = await enablePortalAndSendEmail(personId);
+  return NextResponse.json(result, { status: result.success ? 200 : 400 });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LogoMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,12 @@ export default function PortalLoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("error=expired")) {
+      setError("That login link has expired. Ask Dr. Hari to resend your portal email.");
+    }
+  }, []);
 
   async function login(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
