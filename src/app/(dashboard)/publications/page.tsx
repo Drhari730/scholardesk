@@ -17,6 +17,7 @@ import {
   REVISION_STATUSES,
   getStatusMeta,
 } from "@/lib/constants";
+import { FileAttachments } from "@/components/ui/file-attachments";
 
 interface PublicationRevision {
   id: string;
@@ -373,6 +374,8 @@ export default function PublicationsPage() {
                             </div>
                           )}
                         </div>
+
+                        <FileAttachments entityType="publication" entityId={pub.id} />
 
                         <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-4">
                         <div className="mb-3 flex items-center justify-between">

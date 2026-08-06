@@ -12,6 +12,8 @@ import {
   DialogTrigger,
   DialogContent,
 } from "@/components/ui/dialog";
+import { ResearchGantt } from "@/components/charts/research-gantt";
+import { FileAttachments } from "@/components/ui/file-attachments";
 import { PageTransition, ScrollReveal } from "@/components/ui/motion";
 import { useFetch, apiPost, apiPatch, apiDelete } from "@/lib/hooks";
 import { formatDate } from "@/lib/utils";
@@ -259,6 +261,17 @@ export default function ResearchPage() {
         }
       />
 
+      {projects && projects.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-base">Research Timeline</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResearchGantt projects={projects} />
+          </CardContent>
+        </Card>
+      )}
+
       {loading ? (
         <div className="skeleton h-64 rounded-2xl" />
       ) : !projects?.length ? (
@@ -316,6 +329,7 @@ export default function ResearchPage() {
                     </span>
                     <span>{completedTasks}/{project.tasks.length} tasks done</span>
                   </div>
+                  <FileAttachments entityType="project" entityId={project.id} />
 
                   <div>
                     <div className="mb-2 flex items-center justify-between">

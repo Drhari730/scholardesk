@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 const COOKIE_NAME = "scholardesk_session";
+const PORTAL_COOKIE = "scholardesk_portal";
 
 function getSecret() {
   const secret = process.env.AUTH_SECRET;
@@ -12,12 +13,15 @@ function getSecret() {
   return new TextEncoder().encode(secret);
 }
 
-async function isValidSession(token: string) {
+async function getSession(token: string) {
   try {
-    await jwtVerify(token, getSecret());
-    return true;
+    const { payload } = await jwtVerify(token, getSecret());
+    if (payload.role === "portal" && payload.personId) {
+      return { role: "portal" as const };
+    }
+    return { role: "owner" as const };
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -25,9 +29,13 @@ function isPublicPath(pathname: string) {
   return (
     pathname === "/welcome" ||
     pathname === "/login" ||
+    pathname === "/portal/login" ||
     pathname.startsWith("/api/auth/") ||
+    pathname === "/api/google/callback" ||
     pathname === "/logo.svg" ||
     pathname === "/icon.svg" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
     pathname.endsWith(".ico")
   );
 }
@@ -55,12 +63,37 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const session = request.cookies.get(COOKIE_NAME)?.value;
-  if (session && (await isValidSession(session))) {
-    if (pathname === "/login" || pathname === "/welcome") {
+  const ownerToken = request.cookies.get(COOKIE_NAME)?.value;
+  const portalToken = request.cookies.get(PORTAL_COOKIE)?.value;
+
+  let session: { role: "owner" | "portal" } | null = null;
+  if (ownerToken) session = await getSession(ownerToken);
+  if (!session && portalToken) session = await getSession(portalToken);
+
+  if (session?.role === "portal") {
+    const allowed =
+      pathname.startsWith("/portal") ||
+      pathname.startsWith("/api/portal") ||
+      pathname.startsWith("/api/auth/portal");
+    if (!allowed) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL("/portal", request.url));
+    }
+    return NextResponse.next();
+  }
+
+  if (session?.role === "owner") {
+    if (pathname === "/login" || pathname === "/welcome" || pathname === "/portal/login") {
       return NextResponse.redirect(new URL("/", request.url));
     }
     return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/portal")) {
+    if (pathname === "/portal/login") return NextResponse.next();
+    return NextResponse.redirect(new URL("/portal/login", request.url));
   }
 
   if (pathname.startsWith("/api/")) {
@@ -71,8 +104,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const welcomeUrl = new URL("/welcome", request.url);
-  return NextResponse.redirect(welcomeUrl);
+  return NextResponse.redirect(new URL("/welcome", request.url));
 }
 
 export const config = {

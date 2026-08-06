@@ -15,6 +15,8 @@ model Person {
   role      String   @default("STUDENT")
   department String?
   notes     String?
+  portalEnabled Boolean @default(false)
+  portalPinHash String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -174,6 +176,7 @@ model Exam {
   syllabus     String?
   status       String    @default("PLANNED")
   marksEntered Boolean   @default(false)
+  googleEventId String?
   notes        String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -250,6 +253,12 @@ model AppSettings {
   emailOnProject       Boolean  @default(true)
   emailOnDigest        Boolean  @default(true)
   emailOnBackup        Boolean  @default(true)
+  emailSignature       String?
+  darkMode             Boolean  @default(false)
+  googleAccessToken    String?
+  googleRefreshToken   String?
+  googleTokenExpiry    DateTime?
+  googleCalendarId     String?  @default("primary")
   planningReminderDays Int      @default(7)
   lastDigestSentAt     DateTime?
   lastBackupSentAt     DateTime?
@@ -280,6 +289,20 @@ model AcademicEvent {
   remindEmail       Boolean   @default(true)
   reminder7DaySent  Boolean   @default(false)
   reminder1DaySent  Boolean   @default(false)
+  googleEventId     String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+}
+
+model FileAttachment {
+  id         String   @id @default(cuid())
+  filename   String
+  mimeType   String
+  size       Int
+  storageKey String
+  entityType String
+  entityId   String
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
 }

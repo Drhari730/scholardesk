@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { pushCalendarEvent } from "@/lib/google-calendar";
 
 export async function GET() {
   const exams = await prisma.exam.findMany({
@@ -38,6 +39,18 @@ export async function POST(req: NextRequest) {
         examId: exam.id,
       },
     });
+  }
+
+  const durationMs = (exam.duration ?? 120) * 60 * 1000;
+  const googleId = await pushCalendarEvent({
+    title: `[Exam] ${exam.course.code} — ${exam.title}`,
+    description: exam.venue ? `Venue: ${exam.venue}` : undefined,
+    location: exam.venue ?? undefined,
+    start: exam.examDate,
+    end: new Date(exam.examDate.getTime() + durationMs),
+  }).catch(() => null);
+  if (googleId) {
+    await prisma.exam.update({ where: { id: exam.id }, data: { googleEventId: googleId } });
   }
 
   return NextResponse.json(exam, { status: 201 });

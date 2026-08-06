@@ -4,6 +4,8 @@ set -e
 echo "Applying database schema..."
 npx prisma db push
 
+mkdir -p "${UPLOAD_DIR:-./uploads}"
+
 if [ "$SEED_DATABASE" = "true" ]; then
   echo "Seeding database..."
   npx tsx prisma/seed.ts

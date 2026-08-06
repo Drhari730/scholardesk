@@ -26,6 +26,7 @@ import { useFetch, apiPost, apiPatch, apiDelete } from "@/lib/hooks";
 import { formatDate } from "@/lib/utils";
 import { EVENT_TYPES, EVENT_STATUSES, getStatusMeta } from "@/lib/constants";
 import { parseChecklist, type ChecklistItem } from "@/lib/checklists";
+import { FileAttachments } from "@/components/ui/file-attachments";
 
 interface ScheduleConflict {
   type: string;
@@ -53,6 +54,7 @@ interface AcademicEvent {
   honorarium: string | null;
   notes: string | null;
   checklist: string | null;
+  remindEmail: boolean;
 }
 
 const TYPE_ICONS: Record<string, typeof Plane> = {
@@ -150,6 +152,11 @@ export default function PlanningPage() {
 
   async function updateStatus(id: string, status: string) {
     await apiPatch(`/api/academic-events/${id}`, { status, sendEmail: true });
+    refetch();
+  }
+
+  async function toggleRemindEmail(id: string, remindEmail: boolean) {
+    await apiPatch(`/api/academic-events/${id}`, { remindEmail });
     refetch();
   }
 
@@ -316,6 +323,14 @@ export default function PlanningPage() {
                             <option key={s.value} value={s.value}>{s.label}</option>
                           ))}
                         </Select>
+                        <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                          <input
+                            type="checkbox"
+                            checked={ev.remindEmail}
+                            onChange={(e) => toggleRemindEmail(ev.id, e.target.checked)}
+                          />
+                          Remind 7d & 1d before
+                        </label>
                         {(() => {
                           const items = parseChecklist(ev.checklist);
                           if (!items.length) return null;
@@ -346,6 +361,9 @@ export default function PlanningPage() {
                             </div>
                           );
                         })()}
+                        <div className="mt-3">
+                          <FileAttachments entityType="academic_event" entityId={ev.id} />
+                        </div>
                       </div>
                     </ScrollReveal>
                   );

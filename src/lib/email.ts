@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { prisma } from "@/lib/prisma";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -46,7 +47,14 @@ export async function sendEmail({ to, subject, html, attachments }: SendEmailPar
   }
 }
 
-function baseTemplate(content: string) {
+function baseTemplate(
+  content: string,
+  branding?: { name?: string; title?: string; signature?: string | null }
+) {
+  const name = branding?.name ?? "Dr. Hari Prakash";
+  const title = branding?.title ?? "Assistant Professor, Public Health";
+  const signature = branding?.signature;
+
   return `
 <!DOCTYPE html>
 <html>
@@ -58,13 +66,14 @@ function baseTemplate(content: string) {
         <tr>
           <td style="background:linear-gradient(135deg,#0f5c5c,#0d9488);padding:28px 32px;">
             <p style="margin:0;color:#d4a853;font-size:12px;letter-spacing:2px;text-transform:uppercase;">ScholarDesk</p>
-            <p style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:600;">Dr. Hari Prakash</p>
-            <p style="margin:4px 0 0;color:#99f6e4;font-size:13px;">Assistant Professor, Public Health</p>
+            <p style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:600;">${name}</p>
+            <p style="margin:4px 0 0;color:#99f6e4;font-size:13px;">${title}</p>
           </td>
         </tr>
         <tr>
           <td style="padding:32px;">
             ${content}
+            ${signature ? `<p style="margin:24px 0 0;color:#64748b;font-size:13px;border-top:1px solid #e2e8f0;padding-top:16px;white-space:pre-line;">${signature}</p>` : ""}
           </td>
         </tr>
         <tr>
@@ -79,6 +88,15 @@ function baseTemplate(content: string) {
   </table>
 </body>
 </html>`;
+}
+
+export async function getEmailBranding() {
+  const settings = await prisma.appSettings.findUnique({ where: { id: "default" } });
+  return {
+    name: settings?.userName ?? "Dr. Hari Prakash",
+    title: settings?.userTitle ?? "Assistant Professor, Public Health",
+    signature: settings?.emailSignature ?? null,
+  };
 }
 
 export function taskAssignedEmail(params: {

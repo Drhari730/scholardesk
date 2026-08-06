@@ -1,10 +1,15 @@
 import { SignJWT, jwtVerify } from "jose";
 import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { verifyPasswordHash } from "@/lib/password";
+import { verifyPasswordHash, hashPassword } from "@/lib/password";
 
 const COOKIE_NAME = "scholardesk_session";
+const PORTAL_COOKIE = "scholardesk_portal";
 const SESSION_DURATION = "7d";
+
+export type Session =
+  | { role: "owner" }
+  | { role: "portal"; personId: string; personName: string };
 
 function getSecret() {
   const secret = process.env.AUTH_SECRET;
@@ -17,7 +22,7 @@ function getSecret() {
   return new TextEncoder().encode(secret);
 }
 
-export { COOKIE_NAME };
+export { COOKIE_NAME, PORTAL_COOKIE };
 
 export async function createSessionToken() {
   return new SignJWT({ role: "owner" })
@@ -27,12 +32,27 @@ export async function createSessionToken() {
     .sign(getSecret());
 }
 
+export async function createPortalToken(personId: string, personName: string) {
+  return new SignJWT({ role: "portal", personId, personName })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(SESSION_DURATION)
+    .sign(getSecret());
+}
+
 export async function verifySessionToken(token: string) {
   try {
-    await jwtVerify(token, getSecret());
-    return true;
+    const { payload } = await jwtVerify(token, getSecret());
+    if (payload.role === "portal" && payload.personId) {
+      return {
+        role: "portal" as const,
+        personId: String(payload.personId),
+        personName: String(payload.personName ?? "Team Member"),
+      };
+    }
+    return { role: "owner" as const };
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -52,17 +72,67 @@ export async function verifyPassword(input: string): Promise<boolean> {
   return timingSafeEqual(a, b);
 }
 
-export async function getSessionFromRequest(req: Request) {
+export async function verifyPortalPin(email: string, pin: string) {
+  const person = await prisma.person.findFirst({
+    where: {
+      portalEnabled: true,
+      email: { equals: email, mode: "insensitive" },
+    },
+  });
+  if (!person?.portalPinHash) return null;
+  if (!verifyPasswordHash(pin, person.portalPinHash)) return null;
+  return person;
+}
+
+export async function setPortalPin(personId: string, pin: string) {
+  await prisma.person.update({
+    where: { id: personId },
+    data: {
+      portalEnabled: true,
+      portalPinHash: hashPassword(pin),
+    },
+  });
+}
+
+export async function getSessionFromRequest(req: Request): Promise<Session | null> {
   const cookieHeader = req.headers.get("cookie") ?? "";
-  const match = cookieHeader.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
-  const token = match?.[1];
-  if (!token || !(await verifySessionToken(token))) return null;
-  return { role: "owner" as const };
+
+  const ownerMatch = cookieHeader.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
+  if (ownerMatch?.[1]) {
+    const session = await verifySessionToken(ownerMatch[1]);
+    if (session?.role === "owner") return { role: "owner" };
+  }
+
+  const portalMatch = cookieHeader.match(new RegExp(`${PORTAL_COOKIE}=([^;]+)`));
+  if (portalMatch?.[1]) {
+    const session = await verifySessionToken(portalMatch[1]);
+    if (session?.role === "portal") return session;
+  }
+
+  return null;
+}
+
+export async function requireOwner(req: Request) {
+  const session = await getSessionFromRequest(req);
+  if (!session || session.role !== "owner") return null;
+  return session;
 }
 
 export function sessionCookieOptions(token: string) {
   return {
     name: COOKIE_NAME,
+    value: token,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    maxAge: 60 * 60 * 24 * 7,
+    path: "/",
+  };
+}
+
+export function portalCookieOptions(token: string) {
+  return {
+    name: PORTAL_COOKIE,
     value: token,
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -88,5 +158,8 @@ export async function getEmailPrefs() {
     emailOnBackup: settings?.emailOnBackup ?? true,
     planningReminderDays: settings?.planningReminderDays ?? 7,
     ownerEmail: settings?.email ?? null,
+    emailSignature: settings?.emailSignature ?? null,
+    userName: settings?.userName ?? "Dr. Hari Prakash",
+    userTitle: settings?.userTitle ?? "Assistant Professor, Public Health",
   };
 }

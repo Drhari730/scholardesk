@@ -22,8 +22,38 @@ export default function CalendarPage() {
   const [copied, setCopied] = useState(false);
   const [icalUrl, setIcalUrl] = useState("");
   const [webcalUrl, setWebcalUrl] = useState("");
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleConfigured, setGoogleConfigured] = useState(false);
   const { data: exams } = useFetch<Array<{ id: string; title: string; examDate: string; venue: string | null; course: { code: string } }>>("/api/exams");
   const { data: reminders } = useFetch<Array<{ id: string; title: string; dueDate: string; message: string | null; isCompleted: boolean }>>("/api/reminders");
+
+  useEffect(() => {
+    fetch("/api/google/status", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        setGoogleConnected(!!d.connected);
+        setGoogleConfigured(!!d.configured);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google") === "connected") {
+      setGoogleConnected(true);
+    }
+  }, []);
+
+  async function connectGoogle() {
+    const res = await fetch("/api/google/auth", { credentials: "include" });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  }
+
+  async function disconnectGoogle() {
+    await fetch("/api/google/status", { method: "DELETE", credentials: "include" });
+    setGoogleConnected(false);
+  }
 
   useEffect(() => {
     fetch("/api/calendar/feed-url", { credentials: "include" })
@@ -67,6 +97,32 @@ export default function CalendarPage() {
         title="Google Calendar Integration"
         description="Sync your exams, classes, and reminders with Google Calendar."
       />
+
+      <FadeIn>
+        <Card className="mb-8 border-indigo-200 bg-gradient-to-br from-indigo-50 to-white">
+          <CardHeader>
+            <CardTitle className="text-base">Google Calendar — Push Sync (OAuth)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-slate-600">
+              Connect Google to automatically push planning events and exams to your Google Calendar when you create or update them.
+            </p>
+            {!googleConfigured ? (
+              <p className="text-sm text-amber-700">
+                Add <code className="rounded bg-amber-100 px-1">GOOGLE_CLIENT_ID</code> and{" "}
+                <code className="rounded bg-amber-100 px-1">GOOGLE_CLIENT_SECRET</code> in Railway variables.
+              </p>
+            ) : googleConnected ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm font-medium text-emerald-700">Connected</span>
+                <Button size="sm" variant="outline" onClick={disconnectGoogle}>Disconnect</Button>
+              </div>
+            ) : (
+              <Button onClick={connectGoogle}>Connect Google Calendar</Button>
+            )}
+          </CardContent>
+        </Card>
+      </FadeIn>
 
       <div className="mb-8 grid gap-6 lg:grid-cols-2">
         <FadeIn>

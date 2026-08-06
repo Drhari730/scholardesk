@@ -5,9 +5,11 @@ import { Download, Lock, Mail, Save, Settings, User } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, Textarea } from "@/components/ui/input";
 import { PageTransition, FadeIn } from "@/components/ui/motion";
 import { useFetch, apiPatch } from "@/lib/hooks";
+import { useTheme } from "@/components/ui/theme-provider";
+import { Upload } from "lucide-react";
 
 interface SettingsData {
   userName: string;
@@ -20,6 +22,8 @@ interface SettingsData {
   emailOnProject: boolean;
   emailOnDigest: boolean;
   emailOnBackup: boolean;
+  emailSignature: string | null;
+  darkMode: boolean;
   planningReminderDays: number;
 }
 
@@ -29,6 +33,9 @@ export default function SettingsPage() {
   const [passwordMsg, setPasswordMsg] = useState("");
   const [exporting, setExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<"json" | "xlsx">("json");
+  const { setTheme } = useTheme();
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
 
   async function saveProfile(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -44,7 +51,11 @@ export default function SettingsPage() {
       emailOnProject: fd.get("emailOnProject") === "on",
       emailOnDigest: fd.get("emailOnDigest") === "on",
       emailOnBackup: fd.get("emailOnBackup") === "on",
+      emailSignature: fd.get("emailSignature"),
+      darkMode: fd.get("darkMode") === "on",
     });
+    if (fd.get("darkMode") === "on") setTheme("dark");
+    else setTheme("light");
     setSaved(true);
     refetch();
     setTimeout(() => setSaved(false), 3000);
@@ -80,6 +91,27 @@ export default function SettingsPage() {
       URL.revokeObjectURL(url);
     } finally {
       setExporting(false);
+    }
+  }
+
+  async function importData(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportMsg("");
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("mode", "merge");
+    try {
+      const res = await fetch("/api/settings/import", { method: "POST", body: fd, credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setImportMsg(`Imported: ${JSON.stringify(data.stats)}`);
+    } catch {
+      setImportMsg("Import failed. Use a valid ScholarDesk JSON backup.");
+    } finally {
+      setImporting(false);
+      e.target.value = "";
     }
   }
 
@@ -120,6 +152,19 @@ export default function SettingsPage() {
                   <Label>Your Email (for planning reminders & copies)</Label>
                   <Input name="email" type="email" defaultValue={settings.email ?? ""} className="mt-1" />
                 </div>
+                <div>
+                  <Label>Email signature (appended to outgoing emails)</Label>
+                  <Textarea
+                    name="emailSignature"
+                    defaultValue={settings.emailSignature ?? ""}
+                    className="mt-1"
+                    placeholder="Dr. Hari Prakash&#10;Assistant Professor, Public Health&#10;MSRUAS, Bengaluru"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="darkMode" defaultChecked={settings.darkMode} />
+                  Dark mode
+                </label>
 
                 <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
                   <p className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -215,7 +260,13 @@ export default function SettingsPage() {
                     <Download className="h-4 w-4" />
                     {exporting && exportFormat === "xlsx" ? "Exporting…" : "Download Excel"}
                   </Button>
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                    <Upload className="h-4 w-4" />
+                    {importing ? "Importing…" : "Import JSON backup"}
+                    <input type="file" accept=".json,application/json" className="hidden" onChange={importData} disabled={importing} />
+                  </label>
                 </div>
+                {importMsg && <p className="mt-2 text-sm text-teal-700">{importMsg}</p>}
               </CardContent>
             </Card>
           </FadeIn>

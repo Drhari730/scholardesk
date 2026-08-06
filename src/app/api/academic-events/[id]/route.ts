@@ -4,6 +4,7 @@ import { sendEmail, planningEventConfirmedEmail } from "@/lib/email";
 import { getEmailPrefs } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 import { EVENT_TYPES } from "@/lib/constants";
+import { pushCalendarEvent, deleteCalendarEvent } from "@/lib/google-calendar";
 
 export async function PATCH(
   req: NextRequest,
@@ -65,6 +66,19 @@ export async function PATCH(
     await sendEmail({ to: prefs.ownerEmail, ...template });
   }
 
+  const end = event.endDate ?? new Date(event.startDate.getTime() + 2 * 60 * 60 * 1000);
+  const googleId = await pushCalendarEvent({
+    googleEventId: event.googleEventId,
+    title: `[ScholarDesk] ${event.title}`,
+    description: event.prepNotes ?? undefined,
+    location: event.location ?? event.venue ?? undefined,
+    start: event.startDate,
+    end,
+  }).catch(() => null);
+  if (googleId && googleId !== event.googleEventId) {
+    await prisma.academicEvent.update({ where: { id }, data: { googleEventId: googleId } });
+  }
+
   return NextResponse.json(event);
 }
 
@@ -73,6 +87,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const existing = await prisma.academicEvent.findUnique({ where: { id } });
+  if (existing?.googleEventId) {
+    await deleteCalendarEvent(existing.googleEventId).catch(() => {});
+  }
   await prisma.academicEvent.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }

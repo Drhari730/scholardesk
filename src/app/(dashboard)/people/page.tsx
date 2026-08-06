@@ -13,7 +13,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/ui/motion";
-import { useFetch, apiPost, apiDelete } from "@/lib/hooks";
+import { useFetch, apiPost, apiDelete, apiPatch } from "@/lib/hooks";
 import { PERSON_ROLES } from "@/lib/constants";
 
 interface Person {
@@ -24,6 +24,7 @@ interface Person {
   role: string;
   department: string | null;
   notes: string | null;
+  portalEnabled?: boolean;
   projectMembers: Array<{ project: { title: string } }>;
   _count: { tasks: number };
 }
@@ -47,6 +48,20 @@ export default function PeoplePage() {
   async function deletePerson(id: string) {
     if (!confirm("Remove this person?")) return;
     await apiDelete(`/api/people/${id}`);
+    refetch();
+  }
+
+  async function setPortalAccess(personId: string, pin: string) {
+    if (!pin || pin.length < 4) {
+      alert("PIN must be at least 4 characters");
+      return;
+    }
+    await apiPost("/api/people/portal", { personId, pin });
+    refetch();
+  }
+
+  async function disablePortal(personId: string) {
+    await apiPost("/api/people/portal", { personId, portalEnabled: false });
     refetch();
   }
 
@@ -188,6 +203,38 @@ export default function PeoplePage() {
                   <span>{person._count.tasks} tasks</span>
                   <span>{person.projectMembers.length} projects</span>
                 </div>
+                {person.email && (
+                  <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-2">
+                    <p className="text-xs font-medium text-slate-600">Team portal</p>
+                    {person.portalEnabled ? (
+                      <div className="mt-1 flex items-center justify-between">
+                        <span className="text-xs text-emerald-600">Access enabled</span>
+                        <button onClick={() => disablePortal(person.id)} className="text-xs text-red-500">Disable</button>
+                      </div>
+                    ) : (
+                      <div className="mt-1 flex gap-1">
+                        <Input
+                          id={`pin-${person.id}`}
+                          type="password"
+                          placeholder="Set PIN"
+                          className="h-7 text-xs"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            const el = document.getElementById(`pin-${person.id}`) as HTMLInputElement;
+                            setPortalAccess(person.id, el?.value ?? "");
+                          }}
+                        >
+                          Enable
+                        </Button>
+                      </div>
+                    )}
+                    <p className="mt-1 text-[10px] text-slate-400">Login at /portal/login</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

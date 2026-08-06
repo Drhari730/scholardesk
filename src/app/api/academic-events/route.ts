@@ -6,6 +6,32 @@ import { buildDefaultChecklist, serializeChecklist } from "@/lib/checklists";
 import { detectConflicts } from "@/lib/conflicts";
 import { formatDate } from "@/lib/utils";
 import { EVENT_TYPES } from "@/lib/constants";
+import { pushCalendarEvent } from "@/lib/google-calendar";
+
+async function syncEventToGoogle(event: {
+  id: string;
+  title: string;
+  googleEventId: string | null;
+  startDate: Date;
+  endDate: Date | null;
+  location: string | null;
+  venue: string | null;
+  prepNotes: string | null;
+  type: string;
+}) {
+  const end = event.endDate ?? new Date(event.startDate.getTime() + 2 * 60 * 60 * 1000);
+  const googleId = await pushCalendarEvent({
+    googleEventId: event.googleEventId,
+    title: `[ScholarDesk] ${event.title}`,
+    description: `${event.type.replace(/_/g, " ")}${event.prepNotes ? `\n${event.prepNotes}` : ""}`,
+    location: event.location ?? event.venue ?? undefined,
+    start: event.startDate,
+    end,
+  });
+  if (googleId && googleId !== event.googleEventId) {
+    await prisma.academicEvent.update({ where: { id: event.id }, data: { googleEventId: googleId } });
+  }
+}
 
 export async function GET(req: NextRequest) {
   const month = req.nextUrl.searchParams.get("month");
@@ -82,6 +108,8 @@ export async function POST(req: NextRequest) {
     });
     await sendEmail({ to: prefs.ownerEmail, ...template });
   }
+
+  await syncEventToGoogle(event).catch(() => {});
 
   return NextResponse.json({ ...event, conflicts }, { status: 201 });
 }

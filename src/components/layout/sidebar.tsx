@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { GlobalSearch } from "@/components/layout/global-search";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -64,6 +65,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <GlobalSearch />
         {navItems.map((item) => {
           const isActive =
             pathname === item.href ||

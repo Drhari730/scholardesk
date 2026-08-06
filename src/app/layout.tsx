@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { DM_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/ui/theme-provider";
+import { PwaRegister } from "@/components/ui/pwa-register";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -19,6 +21,7 @@ export const metadata: Metadata = {
   description:
     "Personal academic management suite for research, teaching, publications, and reminders.",
   robots: { index: false, follow: false },
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
     apple: [{ url: "/logo.svg", type: "image/svg+xml" }],
@@ -36,7 +39,12 @@ export default function RootLayout({
       lang="en"
       className={`${dmSans.variable} ${fraunces.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <ThemeProvider>
+          {children}
+          <PwaRegister />
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
