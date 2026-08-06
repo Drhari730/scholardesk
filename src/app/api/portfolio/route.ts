@@ -13,7 +13,7 @@ export const portfolioProjects = [
     site: PERSONAL_SITE,
   },
   {
-    name: "Prama AI",
+    name: "Pramana SRMA",
     category: "Research Tools",
     status: "live",
     description: "AI-assisted systematic review & meta-analysis platform with PRISMA workflow.",
