@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Mail, Phone } from "lucide-react";
+import { Plus, Mail, Phone, ExternalLink, Copy } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,7 +26,7 @@ interface Person {
   notes: string | null;
   portalEnabled?: boolean;
   projectMembers: Array<{ project: { title: string } }>;
-  _count: { tasks: number };
+  _count: { tasks: number; publicationMembers: number };
 }
 
 export default function PeoplePage() {
@@ -177,6 +177,31 @@ export default function PeoplePage() {
         }
       />
 
+      <Card className="mb-6 border-teal-200 bg-teal-50/50">
+        <CardContent className="p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-teal-900">Team Portal — share this with students</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Enable portal on each person&apos;s card below (set a PIN → click <strong>Enable &amp; email</strong>).
+                They must also be added to a <strong>Research Project</strong> or <strong>Publication</strong>, or assigned a <strong>Task</strong>, to see content.
+              </p>
+              <p className="mt-2 break-all text-xs text-slate-500">{portalLoginUrl}</p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="gap-1" onClick={copyPortalLink}>
+                <Copy className="h-3.5 w-3.5" /> Copy link
+              </Button>
+              <Button size="sm" className="gap-1" asChild>
+                <a href={portalLoginUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" /> Open portal
+                </a>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="mb-6 flex flex-wrap gap-2">
         <button
           onClick={() => setRoleFilter("ALL")}
@@ -251,11 +276,23 @@ export default function PeoplePage() {
                 <div className="mt-3 flex gap-3 text-xs text-slate-400">
                   <span>{person._count.tasks} tasks</span>
                   <span>{person.projectMembers.length} projects</span>
+                  <span>{person._count.publicationMembers} publications</span>
                 </div>
-                {person.email && (
-                  <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-2">
-                    <p className="text-xs font-medium text-slate-600">Team portal</p>
-                    {person.portalEnabled ? (
+                {person.portalEnabled &&
+                  person._count.tasks === 0 &&
+                  person.projectMembers.length === 0 &&
+                  person._count.publicationMembers === 0 && (
+                    <p className="mt-2 rounded-md bg-amber-50 px-2 py-1 text-[10px] text-amber-800">
+                      Portal is on but nothing to show yet — add them to a project, publication, or assign a task.
+                    </p>
+                  )}
+                <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-2">
+                  <p className="text-xs font-medium text-slate-600">Team portal</p>
+                  {!person.email ? (
+                    <p className="mt-1 text-[10px] text-amber-700">
+                      Add an email address to this person to enable portal login.
+                    </p>
+                  ) : person.portalEnabled ? (
                       <div className="mt-1 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-emerald-600">Access enabled</span>
@@ -316,7 +353,6 @@ export default function PeoplePage() {
                       <p className="mt-1 text-[10px] text-teal-700">{portalMsg[person.id]}</p>
                     )}
                   </div>
-                )}
               </CardContent>
             </Card>
           ))}

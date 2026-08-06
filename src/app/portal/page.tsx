@@ -58,6 +58,18 @@ export default function PortalPage() {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+        {(data.tasks.length === 0 && data.publications.length === 0 && data.projects.length === 0) && (
+          <Card className="border-amber-200 bg-amber-50/50">
+            <CardContent className="p-5 text-sm text-amber-900">
+              <p className="font-medium">Nothing assigned to you yet</p>
+              <p className="mt-2 text-amber-800/90">
+                Your supervisor needs to add you to a research project or publication, or assign you a task in ScholarDesk.
+                If you just received portal access, ask Dr. Hari Prakash to link you to your work — then refresh this page.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-slate-800">
             <CheckCircle2 className="h-5 w-5 text-teal-600" /> Your Tasks

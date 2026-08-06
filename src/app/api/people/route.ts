@@ -8,7 +8,7 @@ export async function GET() {
     orderBy: { name: "asc" },
     include: {
       projectMembers: { include: { project: true } },
-      _count: { select: { tasks: true } },
+      _count: { select: { tasks: true, publicationMembers: true } },
     },
   });
   return NextResponse.json(people);
