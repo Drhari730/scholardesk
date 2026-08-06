@@ -4,10 +4,10 @@ import { randomBytes } from "crypto";
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
-const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
+const DEFAULT_UPLOAD_ROOT = path.join(process.cwd(), "uploads");
 
 export function getUploadDir() {
-  return process.env.UPLOAD_DIR ?? UPLOAD_ROOT;
+  return process.env.UPLOAD_DIR ?? DEFAULT_UPLOAD_ROOT;
 }
 
 export async function saveUpload(file: File): Promise<{ storageKey: string; size: number }> {
@@ -21,20 +21,20 @@ export async function saveUpload(file: File): Promise<{ storageKey: string; size
   const ext = path.extname(file.name) || "";
   const storageKey = `${Date.now()}-${randomBytes(8).toString("hex")}${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(UPLOAD_ROOT, storageKey), buffer);
+  await writeFile(path.join(dir, storageKey), buffer);
 
   return { storageKey, size: buffer.length };
 }
 
 export async function readUpload(storageKey: string): Promise<Buffer> {
   const safeKey = path.basename(storageKey);
-  return readFile(path.join(UPLOAD_ROOT, safeKey));
+  return readFile(path.join(getUploadDir(), safeKey));
 }
 
 export async function deleteUpload(storageKey: string) {
   const safeKey = path.basename(storageKey);
   try {
-    await unlink(path.join(UPLOAD_ROOT, safeKey));
+    await unlink(path.join(getUploadDir(), safeKey));
   } catch {
     // file may already be gone
   }

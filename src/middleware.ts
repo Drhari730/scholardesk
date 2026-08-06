@@ -25,12 +25,15 @@ async function getSession(token: string) {
   }
 }
 
+function isDualAuthApiPath(pathname: string) {
+  return pathname.startsWith("/api/attachments");
+}
+
 function isPortalPath(pathname: string) {
   return (
     pathname.startsWith("/portal") ||
     pathname.startsWith("/api/portal") ||
-    pathname.startsWith("/api/auth/portal") ||
-    pathname.startsWith("/api/attachments")
+    pathname.startsWith("/api/auth/portal")
   );
 }
 
@@ -74,6 +77,19 @@ export async function middleware(request: NextRequest) {
 
   const ownerToken = request.cookies.get(COOKIE_NAME)?.value;
   const portalToken = request.cookies.get(PORTAL_COOKIE)?.value;
+
+  // Attachment APIs: allow admin OR portal session (route checks entity access)
+  if (isDualAuthApiPath(pathname)) {
+    if (ownerToken) {
+      const ownerSession = await getSession(ownerToken);
+      if (ownerSession?.role === "owner") return NextResponse.next();
+    }
+    if (portalToken) {
+      const portalSession = await getSession(portalToken);
+      if (portalSession?.role === "portal") return NextResponse.next();
+    }
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   // Portal routes: only use portal cookie (admin login must not block team members)
   if (isPortalPath(pathname)) {

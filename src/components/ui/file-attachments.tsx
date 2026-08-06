@@ -25,15 +25,20 @@ export function FileAttachments({
   const [uploading, setUploading] = useState(false);
   const [notifyTeam, setNotifyTeam] = useState(true);
   const [lastUploadMsg, setLastUploadMsg] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!entityId) return;
     fetch(`/api/attachments?entityType=${entityType}&entityId=${entityId}`, {
       credentials: "include",
     })
-      .then((r) => r.json())
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error ?? "Could not load attachments");
+        return Array.isArray(data) ? data : [];
+      })
       .then(setFiles)
-      .catch(() => {});
+      .catch((err) => setError(err.message ?? "Could not load attachments"));
   }, [entityType, entityId]);
 
   async function upload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -41,6 +46,7 @@ export function FileAttachments({
     if (!file) return;
     setUploading(true);
     setLastUploadMsg("");
+    setError("");
     const fd = new FormData();
     fd.append("file", file);
     fd.append("entityType", entityType);
@@ -57,8 +63,14 @@ export function FileAttachments({
           setLastUploadMsg(`Uploaded — team notified (${att.emailsSent} email${att.emailsSent === 1 ? "" : "s"})`);
         } else if (shareable) {
           setLastUploadMsg("Uploaded — team can download from their portal");
+        } else {
+          setLastUploadMsg("File uploaded");
         }
+      } else {
+        setError(att.error ?? "Upload failed — please try again");
       }
+    } catch {
+      setError("Upload failed — check your connection and try again");
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -124,6 +136,7 @@ export function FileAttachments({
         </div>
       )}
       {lastUploadMsg && <p className="mt-2 text-xs text-teal-700">{lastUploadMsg}</p>}
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );
 }
