@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, MessageSquare, UserPlus, X, Users } from "lucide-react";
+import { Plus, MessageSquare, UserPlus, X, Users, RotateCcw } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,8 +14,20 @@ import { formatDate } from "@/lib/utils";
 import {
   PUBLICATION_STATUSES,
   PUBLICATION_MEMBER_ROLES,
+  REVISION_STATUSES,
   getStatusMeta,
 } from "@/lib/constants";
+
+interface PublicationRevision {
+  id: string;
+  round: number;
+  receivedDate: string | null;
+  dueDate: string | null;
+  submittedDate: string | null;
+  comments: string | null;
+  status: string;
+  notes: string | null;
+}
 
 interface PublicationMember {
   id: string;
@@ -35,7 +47,9 @@ interface Publication {
   doi: string | null;
   manuscriptId: string | null;
   notes: string | null;
+  currentRevision?: number;
   members: PublicationMember[];
+  revisions: PublicationRevision[];
 }
 
 interface Person {
@@ -50,6 +64,7 @@ export default function PublicationsPage() {
   const [showForm, setShowForm] = useState(false);
   const [showMemberForm, setShowMemberForm] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showRevisionForm, setShowRevisionForm] = useState<string | null>(null);
   const [filter, setFilter] = useState("ALL");
 
   async function createPublication(e: React.FormEvent<HTMLFormElement>) {
@@ -96,6 +111,31 @@ export default function PublicationsPage() {
   async function deletePublication(id: string) {
     if (!confirm("Delete this publication record?")) return;
     await apiDelete(`/api/publications/${id}`);
+    refetch();
+  }
+
+  async function addRevision(e: React.FormEvent<HTMLFormElement>, publicationId: string) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    await apiPost("/api/publication-revisions", {
+      publicationId,
+      receivedDate: fd.get("receivedDate") || undefined,
+      dueDate: fd.get("dueDate") || undefined,
+      comments: fd.get("comments"),
+      notes: fd.get("notes"),
+    });
+    setShowRevisionForm(null);
+    refetch();
+  }
+
+  async function updateRevision(id: string, data: Record<string, unknown>) {
+    await apiPatch(`/api/publication-revisions/${id}`, data);
+    refetch();
+  }
+
+  async function deleteRevision(id: string) {
+    if (!confirm("Delete this revision round?")) return;
+    await apiDelete(`/api/publication-revisions/${id}`);
     refetch();
   }
 
@@ -238,6 +278,11 @@ export default function PublicationsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-slate-900">{pub.title}</h3>
                           <Badge className={meta.color}>{meta.label}</Badge>
+                          {(pub.currentRevision ?? pub.revisions?.length) ? (
+                            <Badge className="bg-orange-100 text-orange-700">
+                              R{pub.currentRevision || pub.revisions.length}
+                            </Badge>
+                          ) : null}
                         </div>
                         {pub.journal && <p className="mt-1 text-sm text-slate-500">{pub.journal}</p>}
                         {pub.authors && <p className="mt-0.5 text-xs text-slate-400">{pub.authors}</p>}
@@ -267,7 +312,7 @@ export default function PublicationsPage() {
                           ))}
                         </Select>
                         <Button size="sm" variant="outline" onClick={() => setExpandedId(isExpanded ? null : pub.id)}>
-                          {isExpanded ? "Hide Team" : "Manage Team"}
+                          {isExpanded ? "Hide Details" : "Details & Team"}
                         </Button>
                         <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deletePublication(pub.id)}>
                           Delete
@@ -276,7 +321,60 @@ export default function PublicationsPage() {
                     </div>
 
                     {isExpanded && (
-                      <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/30 p-4">
+                      <div className="mt-4 space-y-4">
+                        <div className="rounded-xl border border-orange-100 bg-orange-50/30 p-4">
+                          <div className="mb-3 flex items-center justify-between">
+                            <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                              <RotateCcw className="h-4 w-4 text-orange-600" /> Revision Rounds
+                            </p>
+                            <Button size="sm" variant="outline" onClick={() => setShowRevisionForm(pub.id)}>
+                              Add R{ (pub.revisions?.length ?? 0) + 1 }
+                            </Button>
+                          </div>
+                          {!pub.revisions?.length ? (
+                            <p className="text-xs text-slate-400">No revision rounds yet — add R1 when reviewers respond.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {pub.revisions.map((rev) => {
+                                const revMeta = getStatusMeta(REVISION_STATUSES, rev.status);
+                                return (
+                                  <div key={rev.id} className="rounded-lg bg-white px-3 py-2 shadow-sm">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <div>
+                                        <p className="text-sm font-medium">Round {rev.round}</p>
+                                        <p className="text-xs text-slate-400">
+                                          {rev.receivedDate && `Received: ${formatDate(rev.receivedDate)}`}
+                                          {rev.dueDate && ` · Due: ${formatDate(rev.dueDate)}`}
+                                          {rev.submittedDate && ` · Submitted: ${formatDate(rev.submittedDate)}`}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Badge className={revMeta.color}>{revMeta.label}</Badge>
+                                        <Select
+                                          value={rev.status}
+                                          onChange={(e) => updateRevision(rev.id, { status: e.target.value })}
+                                          className="text-xs"
+                                        >
+                                          {REVISION_STATUSES.map((s) => (
+                                            <option key={s.value} value={s.value}>{s.label}</option>
+                                          ))}
+                                        </Select>
+                                        <button onClick={() => deleteRevision(rev.id)} className="text-slate-400 hover:text-red-500">
+                                          <X className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    {rev.comments && (
+                                      <p className="mt-2 text-xs text-amber-800">{rev.comments}</p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-4">
                         <div className="mb-3 flex items-center justify-between">
                           <p className="text-sm font-semibold text-slate-800">Publication Team</p>
                           <Button size="sm" variant="outline" onClick={() => setShowMemberForm(pub.id)}>
@@ -303,6 +401,7 @@ export default function PublicationsPage() {
                             ))}
                           </div>
                         )}
+                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -311,6 +410,34 @@ export default function PublicationsPage() {
             );
           })}
         </div>
+      )}
+
+      {showRevisionForm && (
+        <DialogRoot open={!!showRevisionForm} onOpenChange={() => setShowRevisionForm(null)}>
+          <DialogContent title="Add Revision Round">
+            <form onSubmit={(e) => addRevision(e, showRevisionForm)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Received Date</Label>
+                  <Input name="receivedDate" type="date" className="mt-1" />
+                </div>
+                <div>
+                  <Label>Due Date</Label>
+                  <Input name="dueDate" type="date" className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <Label>Reviewer Comments</Label>
+                <Textarea name="comments" className="mt-1" placeholder="Summary of reviewer feedback for this round" />
+              </div>
+              <div>
+                <Label>Notes</Label>
+                <Textarea name="notes" className="mt-1" />
+              </div>
+              <Button type="submit" className="w-full">Add Revision Round</Button>
+            </form>
+          </DialogContent>
+        </DialogRoot>
       )}
 
       {showMemberForm && (

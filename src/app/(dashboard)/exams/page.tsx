@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Calendar, MapPin } from "lucide-react";
+import { Plus, Calendar, MapPin, Download, Upload, FileSpreadsheet } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +29,7 @@ interface Exam {
   status: string;
   marksEntered: boolean;
   notes: string | null;
+  _count?: { marks: number };
   course: { code: string; name: string };
   questionPapers: Array<{ id: string; title: string; status: string }>;
 }
@@ -43,6 +44,7 @@ export default function ExamsPage() {
   const { data: exams, loading, refetch } = useFetch<Exam[]>("/api/exams");
   const { data: courses } = useFetch<Course[]>("/api/courses");
   const [showForm, setShowForm] = useState(false);
+  const [marksExamId, setMarksExamId] = useState<string | null>(null);
 
   async function createExam(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -160,6 +162,7 @@ export default function ExamsPage() {
                     exam={exam}
                     onUpdate={updateExam}
                     onDelete={deleteExam}
+                    onManageMarks={setMarksExamId}
                   />
                 ))}
               </div>
@@ -175,6 +178,7 @@ export default function ExamsPage() {
                     exam={exam}
                     onUpdate={updateExam}
                     onDelete={deleteExam}
+                    onManageMarks={setMarksExamId}
                     muted
                   />
                 ))}
@@ -183,7 +187,134 @@ export default function ExamsPage() {
           )}
         </div>
       )}
+
+      {marksExamId && (
+        <MarksDialog
+          examId={marksExamId}
+          examTitle={exams?.find((e) => e.id === marksExamId)?.title ?? "Exam"}
+          onClose={() => setMarksExamId(null)}
+          onImported={refetch}
+        />
+      )}
     </PageTransition>
+  );
+}
+
+function MarksDialog({
+  examId,
+  examTitle,
+  onClose,
+  onImported,
+}: {
+  examId: string;
+  examTitle: string;
+  onClose: () => void;
+  onImported: () => void;
+}) {
+  const [importing, setImporting] = useState(false);
+  const [message, setMessage] = useState("");
+  const { data, refetch } = useFetch<{ marks: Array<{ rollNumber: string; studentName: string; marks: number | null; grade: string | null }> }>(
+    `/api/exams/${examId}/marks`
+  );
+
+  async function downloadCsv() {
+    const res = await fetch(`/api/exams/${examId}/marks?format=csv`, { credentials: "include" });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${examTitle.replace(/\s+/g, "-")}-marks.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadTemplate() {
+    const csv = "roll_number,student_name,marks,grade,remarks\nUSN001,Student Name,85,A,\n";
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "marks-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setMessage("");
+    try {
+      const text = await file.text();
+      const res = await fetch(`/api/exams/${examId}/marks`, {
+        method: "POST",
+        headers: { "Content-Type": "text/csv" },
+        credentials: "include",
+        body: text,
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error);
+      setMessage(`Imported ${result.imported} student records.`);
+      refetch();
+      onImported();
+    } catch {
+      setMessage("Import failed. Check CSV format.");
+    } finally {
+      setImporting(false);
+      e.target.value = "";
+    }
+  }
+
+  return (
+    <DialogRoot open onOpenChange={onClose}>
+      <DialogContent title={`Marks — ${examTitle}`}>
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={downloadTemplate} className="gap-1">
+              <FileSpreadsheet className="h-3 w-3" /> Template
+            </Button>
+            <Button size="sm" variant="outline" onClick={downloadCsv} className="gap-1">
+              <Download className="h-3 w-3" /> Export CSV
+            </Button>
+            <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+              <Upload className="h-3 w-3" />
+              {importing ? "Importing…" : "Import CSV"}
+              <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleUpload} disabled={importing} />
+            </label>
+          </div>
+          <p className="text-xs text-slate-500">
+            CSV columns: roll_number, student_name, marks, grade, remarks
+          </p>
+          {message && <p className="text-sm text-teal-700">{message}</p>}
+          {data?.marks && data.marks.length > 0 ? (
+            <div className="max-h-60 overflow-y-auto rounded-xl border border-slate-100">
+              <table className="w-full text-left text-sm">
+                <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2">Roll No.</th>
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Marks</th>
+                    <th className="px-3 py-2">Grade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.marks.map((m) => (
+                    <tr key={m.rollNumber} className="border-t border-slate-50">
+                      <td className="px-3 py-2 font-mono text-xs">{m.rollNumber}</td>
+                      <td className="px-3 py-2">{m.studentName}</td>
+                      <td className="px-3 py-2">{m.marks ?? "—"}</td>
+                      <td className="px-3 py-2">{m.grade ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">No marks yet — import a CSV or download the template.</p>
+          )}
+        </div>
+      </DialogContent>
+    </DialogRoot>
   );
 }
 
@@ -191,11 +322,13 @@ function ExamCard({
   exam,
   onUpdate,
   onDelete,
+  onManageMarks,
   muted,
 }: {
   exam: Exam;
   onUpdate: (id: string, data: Record<string, unknown>) => void;
   onDelete: (id: string) => void;
+  onManageMarks: (id: string) => void;
   muted?: boolean;
 }) {
   const statusMeta = getStatusMeta(EXAM_STATUSES, exam.status);
@@ -252,6 +385,9 @@ function ExamCard({
             />
             Marks entered
           </label>
+          <Button size="sm" variant="outline" onClick={() => onManageMarks(exam.id)} className="gap-1">
+            <FileSpreadsheet className="h-3 w-3" /> Marks
+          </Button>
           <Button
             size="sm"
             variant="ghost"

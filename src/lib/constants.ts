@@ -78,6 +78,12 @@ export const RESEARCH_PHASES = [
   { value: "COMPLETED", label: "Completed", color: "bg-slate-100 text-slate-700" },
 ] as const;
 
+export const REVISION_STATUSES = [
+  { value: "PENDING", label: "Pending", color: "bg-slate-100 text-slate-700" },
+  { value: "IN_PROGRESS", label: "In Progress", color: "bg-amber-100 text-amber-700" },
+  { value: "SUBMITTED", label: "Submitted", color: "bg-emerald-100 text-emerald-700" },
+] as const;
+
 export const PUBLICATION_MEMBER_ROLES = [
   { value: "LEAD_AUTHOR", label: "Lead Author" },
   { value: "CO_AUTHOR", label: "Co-Author" },

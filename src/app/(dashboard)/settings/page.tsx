@@ -18,6 +18,7 @@ interface SettingsData {
   emailOnPublication: boolean;
   emailOnPlanning: boolean;
   emailOnProject: boolean;
+  emailOnDigest: boolean;
   planningReminderDays: number;
 }
 
@@ -39,6 +40,7 @@ export default function SettingsPage() {
       emailOnPublication: fd.get("emailOnPublication") === "on",
       emailOnPlanning: fd.get("emailOnPlanning") === "on",
       emailOnProject: fd.get("emailOnProject") === "on",
+      emailOnDigest: fd.get("emailOnDigest") === "on",
       planningReminderDays: Number(fd.get("planningReminderDays")),
     });
     setSaved(true);
@@ -136,6 +138,10 @@ export default function SettingsPage() {
                     <label className="flex items-center gap-2">
                       <input type="checkbox" name="emailOnPlanning" defaultChecked={settings.emailOnPlanning} />
                       Planning events & reminders to me
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" name="emailOnDigest" defaultChecked={settings.emailOnDigest} />
+                      Weekly Monday digest email to me
                     </label>
                   </div>
                   <div className="mt-3">

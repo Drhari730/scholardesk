@@ -8,6 +8,7 @@ export async function GET() {
     orderBy: { updatedAt: "desc" },
     include: {
       members: { include: { person: true } },
+      revisions: { orderBy: { round: "asc" } },
     },
   });
   return NextResponse.json(publications);

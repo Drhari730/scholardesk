@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     emailOnPublication: settings?.emailOnPublication ?? true,
     emailOnPlanning: settings?.emailOnPlanning ?? true,
     emailOnProject: settings?.emailOnProject ?? true,
+    emailOnDigest: settings?.emailOnDigest ?? true,
     planningReminderDays: settings?.planningReminderDays ?? 7,
     hasPasswordSet: !!(settings?.passwordHash || process.env.ADMIN_PASSWORD),
   });
@@ -58,6 +59,7 @@ export async function PATCH(req: NextRequest) {
       emailOnPublication: body.emailOnPublication,
       emailOnPlanning: body.emailOnPlanning,
       emailOnProject: body.emailOnProject,
+      emailOnDigest: body.emailOnDigest,
       planningReminderDays: body.planningReminderDays
         ? Number(body.planningReminderDays)
         : undefined,
@@ -72,6 +74,7 @@ export async function PATCH(req: NextRequest) {
       emailOnPublication: body.emailOnPublication ?? true,
       emailOnPlanning: body.emailOnPlanning ?? true,
       emailOnProject: body.emailOnProject ?? true,
+      emailOnDigest: body.emailOnDigest ?? true,
       planningReminderDays: body.planningReminderDays ? Number(body.planningReminderDays) : 7,
     },
   });

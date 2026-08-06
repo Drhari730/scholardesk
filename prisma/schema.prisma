@@ -90,12 +90,32 @@ model Publication {
   doi             String?
   manuscriptId    String?
   impactFactor    Float?
+  currentRevision Int       @default(0)
   notes           String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  reminders Reminder[]
-  members   PublicationMember[]
+  reminders  Reminder[]
+  members    PublicationMember[]
+  revisions  PublicationRevision[]
+}
+
+model PublicationRevision {
+  id            String    @id @default(cuid())
+  publicationId String
+  round         Int
+  receivedDate  DateTime?
+  dueDate       DateTime?
+  submittedDate DateTime?
+  comments      String?
+  status        String    @default("PENDING")
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@unique([publicationId, round])
 }
 
 model PublicationMember {
@@ -161,6 +181,23 @@ model Exam {
   course         Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
   questionPapers QuestionPaper[]
   reminders      Reminder[]
+  marks          ExamMark[]
+}
+
+model ExamMark {
+  id          String   @id @default(cuid())
+  examId      String
+  rollNumber  String
+  studentName String
+  marks       Float?
+  grade       String?
+  remarks     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, rollNumber])
 }
 
 model QuestionPaper {
@@ -211,7 +248,9 @@ model AppSettings {
   emailOnPublication   Boolean  @default(true)
   emailOnPlanning      Boolean  @default(true)
   emailOnProject       Boolean  @default(true)
+  emailOnDigest        Boolean  @default(true)
   planningReminderDays Int      @default(7)
+  lastDigestSentAt     DateTime?
   updatedAt            DateTime @updatedAt
 }
 

@@ -309,3 +309,63 @@ export function planningEventEmail(params: {
     html: baseTemplate(content),
   };
 }
+
+export function weeklyDigestEmail(params: {
+  userName: string;
+  weekRange: string;
+  upcomingExams: Array<{ title: string; course: string; date: string }>;
+  planningEvents: Array<{ title: string; type: string; date: string }>;
+  pendingTasks: Array<{ title: string; project?: string; dueDate?: string }>;
+  activePublications: Array<{ title: string; status: string; revision?: string }>;
+  overdueReminders: Array<{ title: string; dueDate: string }>;
+}) {
+  const section = (title: string, items: string) =>
+    items
+      ? `<div style="margin-bottom:24px;">
+          <p style="margin:0 0 12px;color:#0f5c5c;font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${title}</p>
+          ${items}
+        </div>`
+      : "";
+
+  const listItem = (main: string, sub?: string) =>
+    `<div style="padding:12px 16px;background:#f8fafc;border-radius:8px;margin-bottom:8px;">
+      <p style="margin:0;color:#334155;font-size:14px;font-weight:500;">${main}</p>
+      ${sub ? `<p style="margin:4px 0 0;color:#64748b;font-size:13px;">${sub}</p>` : ""}
+    </div>`;
+
+  const examsHtml = params.upcomingExams.length
+    ? params.upcomingExams.map((e) => listItem(e.title, `${e.course} · ${e.date}`)).join("")
+    : `<p style="margin:0;color:#94a3b8;font-size:14px;">No exams this week.</p>`;
+
+  const eventsHtml = params.planningEvents.length
+    ? params.planningEvents.map((e) => listItem(e.title, `${e.type} · ${e.date}`)).join("")
+    : `<p style="margin:0;color:#94a3b8;font-size:14px;">No planning events this week.</p>`;
+
+  const tasksHtml = params.pendingTasks.length
+    ? params.pendingTasks.map((t) => listItem(t.title, [t.project, t.dueDate].filter(Boolean).join(" · "))).join("")
+    : `<p style="margin:0;color:#94a3b8;font-size:14px;">No pending tasks.</p>`;
+
+  const pubsHtml = params.activePublications.length
+    ? params.activePublications.map((p) => listItem(p.title, `${p.status}${p.revision ? ` · ${p.revision}` : ""}`)).join("")
+    : `<p style="margin:0;color:#94a3b8;font-size:14px;">No active manuscripts.</p>`;
+
+  const remindersHtml = params.overdueReminders.length
+    ? params.overdueReminders.map((r) => listItem(r.title, `Due: ${r.dueDate}`)).join("")
+    : `<p style="margin:0;color:#94a3b8;font-size:14px;">All caught up on reminders.</p>`;
+
+  const content = `
+    <p style="margin:0 0 8px;color:#334155;font-size:16px;">Good morning, <strong>${params.userName}</strong>!</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;">Your ScholarDesk weekly summary for <strong>${params.weekRange}</strong>:</p>
+    ${section("📅 Upcoming Exams", examsHtml)}
+    ${section("🗓 Month Planning", eventsHtml)}
+    ${section("📋 Pending Research Tasks", tasksHtml)}
+    ${section("📄 Active Manuscripts", pubsHtml)}
+    ${section("⏰ Overdue Reminders", remindersHtml)}
+    <p style="margin:24px 0 0;color:#475569;font-size:14px;">Open <a href="${APP_URL}" style="color:#0d9488;">ScholarDesk</a> to manage your week ahead.</p>
+  `;
+
+  return {
+    subject: `ScholarDesk Weekly Digest — ${params.weekRange}`,
+    html: baseTemplate(content),
+  };
+}
