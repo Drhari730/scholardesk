@@ -26,13 +26,14 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/planning", label: "Month Planning", icon: CalendarDays },
   { href: "/research", label: "Research Projects", icon: FlaskConical },
   { href: "/publications", label: "Publications", icon: BookOpen },
   { href: "/teaching", label: "Teaching Planner", icon: GraduationCap },
   { href: "/timetable", label: "Class Timetable", icon: Calendar },
   { href: "/exams", label: "Exams & Marks", icon: ClipboardList },
   { href: "/question-papers", label: "Question Papers", icon: FileQuestion },
-  { href: "/calendar", label: "Google Calendar", icon: CalendarDays },
+  { href: "/calendar", label: "Google Calendar", icon: Calendar },
   { href: "/people", label: "People", icon: Users },
   { href: "/reminders", label: "Reminders", icon: Bell },
 ];

@@ -10,7 +10,7 @@ function escapeIcs(text: string): string {
 }
 
 export async function GET() {
-  const [exams, reminders, sessions, courses] = await Promise.all([
+  const [exams, reminders, sessions, academicEvents] = await Promise.all([
     prisma.exam.findMany({ include: { course: true }, orderBy: { examDate: "asc" } }),
     prisma.reminder.findMany({
       where: { isCompleted: false },
@@ -18,7 +18,7 @@ export async function GET() {
       orderBy: { dueDate: "asc" },
     }),
     prisma.classSession.findMany({ include: { course: true } }),
-    prisma.course.findMany(),
+    prisma.academicEvent.findMany({ orderBy: { startDate: "asc" } }),
   ]);
 
   const now = new Date();
@@ -67,6 +67,23 @@ export async function GET() {
       `DTEND;TZID=Asia/Kolkata:${session.endTime.replace(":", "")}00`,
       `SUMMARY:${escapeIcs(`${course.code}: ${session.topic ?? course.name}`)}`,
       session.room ? `LOCATION:${escapeIcs(session.room)}` : "",
+      "END:VEVENT",
+    ].filter(Boolean).join("\r\n"));
+  }
+
+  for (const ev of academicEvents) {
+    const start = new Date(ev.startDate);
+    const end = ev.endDate ? new Date(ev.endDate) : new Date(start.getTime() + 2 * 60 * 60000);
+    const typeLabel = ev.type.replace(/_/g, " ");
+    events.push([
+      "BEGIN:VEVENT",
+      `UID:event-${ev.id}@scholardesk`,
+      `DTSTAMP:${formatIcsDate(now)}`,
+      `DTSTART:${formatIcsDate(start)}`,
+      `DTEND:${formatIcsDate(end)}`,
+      `SUMMARY:${escapeIcs(`[${typeLabel}] ${ev.title}`)}`,
+      ev.location ? `LOCATION:${escapeIcs(ev.location)}` : "",
+      ev.prepNotes ? `DESCRIPTION:${escapeIcs(ev.prepNotes)}` : "",
       "END:VEVENT",
     ].filter(Boolean).join("\r\n"));
   }

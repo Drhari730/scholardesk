@@ -99,6 +99,25 @@ export const INDIAN_STATES = [
   "Multi-State", "National", "International",
 ] as const;
 
+export const EVENT_TYPES = [
+  { value: "CONFERENCE", label: "Conference", color: "bg-indigo-100 text-indigo-700", icon: "conference" },
+  { value: "GUEST_LECTURE", label: "Guest Lecture", color: "bg-violet-100 text-violet-700", icon: "lecture" },
+  { value: "TRAVEL", label: "Travel", color: "bg-sky-100 text-sky-700", icon: "travel" },
+  { value: "LEAVE", label: "Leave", color: "bg-rose-100 text-rose-700", icon: "leave" },
+  { value: "WORKSHOP", label: "Workshop", color: "bg-amber-100 text-amber-700", icon: "workshop" },
+] as const;
+
+export const EVENT_STATUSES = [
+  { value: "INVITED", label: "Invited", color: "bg-blue-100 text-blue-700" },
+  { value: "PLANNED", label: "Planned", color: "bg-slate-100 text-slate-700" },
+  { value: "CONFIRMED", label: "Confirmed", color: "bg-emerald-100 text-emerald-700" },
+  { value: "PREPARING", label: "Preparing", color: "bg-amber-100 text-amber-700" },
+  { value: "IN_PROGRESS", label: "In Progress", color: "bg-cyan-100 text-cyan-700" },
+  { value: "COMPLETED", label: "Completed", color: "bg-teal-100 text-teal-700" },
+  { value: "CANCELLED", label: "Cancelled", color: "bg-red-100 text-red-700" },
+  { value: "ON_LEAVE", label: "On Leave", color: "bg-rose-100 text-rose-700" },
+] as const;
+
 export function getStatusMeta<T extends { value: string; label: string; color?: string }>(
   statuses: readonly T[],
   value: string

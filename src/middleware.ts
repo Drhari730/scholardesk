@@ -23,6 +23,7 @@ async function isValidSession(token: string) {
 
 function isPublicPath(pathname: string) {
   return (
+    pathname === "/welcome" ||
     pathname === "/login" ||
     pathname.startsWith("/api/auth/") ||
     pathname === "/logo.svg" ||
@@ -56,7 +57,7 @@ export async function middleware(request: NextRequest) {
 
   const session = request.cookies.get(COOKIE_NAME)?.value;
   if (session && (await isValidSession(session))) {
-    if (pathname === "/login") {
+    if (pathname === "/login" || pathname === "/welcome") {
       return NextResponse.redirect(new URL("/", request.url));
     }
     return NextResponse.next();
@@ -66,9 +67,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const loginUrl = new URL("/login", request.url);
-  loginUrl.searchParams.set("from", pathname);
-  return NextResponse.redirect(loginUrl);
+  if (pathname === "/login") {
+    return NextResponse.next();
+  }
+
+  const welcomeUrl = new URL("/welcome", request.url);
+  return NextResponse.redirect(welcomeUrl);
 }
 
 export const config = {

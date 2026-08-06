@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     prisma.classSession.deleteMany(),
     prisma.publication.deleteMany(),
     prisma.researchProject.deleteMany(),
+    prisma.academicEvent.deleteMany(),
     prisma.course.deleteMany(),
     prisma.person.deleteMany(),
   ]);

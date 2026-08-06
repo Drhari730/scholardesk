@@ -11,6 +11,9 @@ import {
   Calendar,
   ExternalLink,
   Rocket,
+  Sparkles,
+  Plane,
+  Mic2,
 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, StatCard } from "@/components/ui/page-header";
@@ -20,12 +23,15 @@ import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/compone
 import { DonutChartCard, PieChartCard } from "@/components/charts/chart-cards";
 import { useFetch } from "@/lib/hooks";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { getDailyQuote, getGreeting, formatWelcomeDate } from "@/lib/quotes";
 import {
   getStatusMeta,
   PUBLICATION_STATUSES,
   TASK_STATUSES,
   PROJECT_STATUSES,
   EXAM_STATUSES,
+  EVENT_TYPES,
+  EVENT_STATUSES,
 } from "@/lib/constants";
 
 interface DashboardData {
@@ -37,6 +43,7 @@ interface DashboardData {
     overdueReminders: number;
     people: number;
     courses: number;
+    monthEvents: number;
   };
   recentPublications: Array<{
     id: string;
@@ -66,6 +73,15 @@ interface DashboardData {
   taskStatusCounts: Array<{ status: string; _count: number }>;
   projectStatusCounts: Array<{ status: string; _count: number }>;
   examStatusCounts: Array<{ status: string; _count: number }>;
+  upcomingPlanning: Array<{
+    id: string;
+    title: string;
+    type: string;
+    status: string;
+    startDate: string;
+    endDate: string | null;
+    location: string | null;
+  }>;
 }
 
 interface PortfolioData {
@@ -129,20 +145,51 @@ export default function DashboardPage() {
   }));
 
   const liveTools = portfolio?.projects.filter((p) => p.status === "live").length ?? 0;
+  const quote = getDailyQuote();
+  const greeting = getGreeting();
+  const todayStr = formatWelcomeDate();
 
   return (
     <PageTransition>
+      <FadeIn>
+        <div className="mb-8 overflow-hidden rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-800 via-teal-700 to-teal-900 p-6 text-white shadow-xl sm:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-widest text-amber-300/80">{todayStr}</p>
+              <h1 className="mt-2 font-serif text-2xl font-semibold sm:text-3xl">
+                {greeting}, Dr. Hari Prakash
+              </h1>
+              <p className="mt-1 text-teal-100/80">Your unified academic command center</p>
+            </div>
+            <blockquote className="max-w-md rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+              <Sparkles className="mb-2 h-4 w-4 text-amber-300" />
+              <p className="text-sm italic leading-relaxed text-teal-50">&ldquo;{quote.text}&rdquo;</p>
+              <footer className="mt-2 text-xs text-amber-200/70">— {quote.author}</footer>
+            </blockquote>
+          </div>
+        </div>
+      </FadeIn>
+
       <PageHeader
-        title="Welcome back, Dr. Hari Prakash"
-        description="Your unified academic command center — research, teaching, publications, and digital health tools."
+        title="Dashboard Overview"
+        description={`${data.stats.monthEvents} events planned this month · research, teaching, publications`}
         action={
-          <Link
-            href="/calendar"
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
-          >
-            <Calendar className="h-4 w-4" />
-            Google Calendar
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/planning"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-medium text-teal-950 hover:bg-amber-400"
+            >
+              <Calendar className="h-4 w-4" />
+              Month Planning
+            </Link>
+            <Link
+              href="/calendar"
+              className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Calendar
+            </Link>
+          </div>
         }
       />
 
@@ -170,9 +217,45 @@ export default function DashboardPage() {
           <StatCard label="Publications" value={data.stats.totalPublications} icon={BookOpen} trend={`${portfolio?.profile.publications ?? 43}+ on personal site`} />
         </StaggerItem>
         <StaggerItem>
-          <StatCard label="Live Digital Tools" value={liveTools} icon={Rocket} trend="From your portfolio" />
+          <StatCard label="This Month" value={data.stats.monthEvents} icon={Calendar} trend="Conferences, travel, leave" />
         </StaggerItem>
       </StaggerContainer>
+
+      {data.upcomingPlanning.length > 0 && (
+        <FadeIn className="mb-8">
+          <Card className="border-indigo-100">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Upcoming — Conferences, Lectures & Travel</CardTitle>
+              <Link href="/planning" className="text-sm font-medium text-teal-700 hover:underline">
+                View month planner →
+              </Link>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {data.upcomingPlanning.map((ev) => {
+                const typeMeta = getStatusMeta(EVENT_TYPES, ev.type);
+                const statusMeta = getStatusMeta(EVENT_STATUSES, ev.status);
+                const Icon = ev.type === "GUEST_LECTURE" ? Mic2 : ev.type === "TRAVEL" ? Plane : Calendar;
+                return (
+                  <div key={ev.id} className="flex gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    <div className={`rounded-lg p-2 ${typeMeta.color}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-800">{ev.title}</p>
+                      <p className="text-xs text-slate-500">{formatDate(ev.startDate)}</p>
+                      {ev.location && <p className="text-xs text-slate-400">{ev.location}</p>}
+                      <div className="mt-1 flex gap-1">
+                        <Badge className={typeMeta.color}>{typeMeta.label}</Badge>
+                        <Badge className={statusMeta.color}>{statusMeta.label}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </FadeIn>
+      )}
 
       <div className="mb-8 grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
         <FadeIn delay={0.05}>

@@ -208,3 +208,27 @@ model AppSettings {
   email       String?
   updatedAt   DateTime @updatedAt
 }
+
+model AcademicEvent {
+  id                String    @id @default(cuid())
+  title             String
+  type              String
+  status            String    @default("PLANNED")
+  startDate         DateTime
+  endDate           DateTime?
+  location          String?
+  venue             String?
+  organizer         String?
+  hostInstitution   String?
+  description       String?
+  prepNotes         String?
+  travelMode        String?
+  travelDetails     String?
+  accommodation     String?
+  presentationTitle String?
+  honorarium        String?
+  invitationDate    DateTime?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
