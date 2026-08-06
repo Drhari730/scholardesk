@@ -139,6 +139,20 @@ export async function getSessionFromRequest(req: Request): Promise<Session | nul
   return null;
 }
 
+/** Portal API routes must use this — ignores admin session cookie */
+export async function getPortalSessionFromRequest(req: Request): Promise<Session | null> {
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const portalMatch = cookieHeader.match(new RegExp(`${PORTAL_COOKIE}=([^;]+)`));
+  if (!portalMatch?.[1]) return null;
+  const session = await verifySessionToken(portalMatch[1]);
+  if (session?.role === "portal") return session;
+  return null;
+}
+
+export function clearOwnerSessionCookie(res: { cookies: { set: (name: string, value: string, options: object) => void } }) {
+  res.cookies.set(COOKIE_NAME, "", { httpOnly: true, path: "/", maxAge: 0 });
+}
+
 export async function requireOwner(req: Request) {
   const session = await getSessionFromRequest(req);
   if (!session || session.role !== "owner") return null;

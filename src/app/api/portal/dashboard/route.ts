@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import { getPortalSessionFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
-  const session = await getSessionFromRequest(req);
+  const session = await getPortalSessionFromRequest(req);
   if (!session || session.role !== "portal") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

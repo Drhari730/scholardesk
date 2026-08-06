@@ -25,6 +25,14 @@ async function getSession(token: string) {
   }
 }
 
+function isPortalPath(pathname: string) {
+  return (
+    pathname.startsWith("/portal") ||
+    pathname.startsWith("/api/portal") ||
+    pathname.startsWith("/api/auth/portal")
+  );
+}
+
 function isPublicPath(pathname: string) {
   return (
     pathname === "/welcome" ||
@@ -66,34 +74,33 @@ export async function middleware(request: NextRequest) {
   const ownerToken = request.cookies.get(COOKIE_NAME)?.value;
   const portalToken = request.cookies.get(PORTAL_COOKIE)?.value;
 
+  // Portal routes: only use portal cookie (admin login must not block team members)
+  if (isPortalPath(pathname)) {
+    if (portalToken) {
+      const portalSession = await getSession(portalToken);
+      if (portalSession?.role === "portal") {
+        return NextResponse.next();
+      }
+    }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.redirect(new URL("/portal/login", request.url));
+  }
+
   let session: { role: "owner" | "portal" } | null = null;
   if (ownerToken) session = await getSession(ownerToken);
   if (!session && portalToken) session = await getSession(portalToken);
 
   if (session?.role === "portal") {
-    const allowed =
-      pathname.startsWith("/portal") ||
-      pathname.startsWith("/api/portal") ||
-      pathname.startsWith("/api/auth/portal");
-    if (!allowed) {
-      if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-      return NextResponse.redirect(new URL("/portal", request.url));
-    }
-    return NextResponse.next();
+    return NextResponse.redirect(new URL("/portal", request.url));
   }
 
   if (session?.role === "owner") {
-    if (pathname === "/login" || pathname === "/welcome" || pathname === "/portal/login") {
+    if (pathname === "/login" || pathname === "/welcome") {
       return NextResponse.redirect(new URL("/", request.url));
     }
     return NextResponse.next();
-  }
-
-  if (pathname.startsWith("/portal")) {
-    if (pathname === "/portal/login") return NextResponse.next();
-    return NextResponse.redirect(new URL("/portal/login", request.url));
   }
 
   if (pathname.startsWith("/api/")) {

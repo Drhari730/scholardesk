@@ -3,6 +3,7 @@ import {
   verifyPortalPin,
   createPortalToken,
   portalCookieOptions,
+  clearOwnerSessionCookie,
   PORTAL_COOKIE,
 } from "@/lib/auth";
 
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
     maxAge: opts.maxAge,
     path: opts.path,
   });
+  clearOwnerSessionCookie(res);
   return res;
 }
 

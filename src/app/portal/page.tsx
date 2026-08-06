@@ -20,6 +20,7 @@ interface PortalData {
 export default function PortalPage() {
   const router = useRouter();
   const [data, setData] = useState<PortalData | null>(null);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     fetch("/api/portal/dashboard", { credentials: "include" })
@@ -28,12 +29,23 @@ export default function PortalPage() {
         return r.json();
       })
       .then(setData)
-      .catch(() => router.push("/portal/login"));
-  }, [router]);
+      .catch(() => {
+        setLoadError("Could not load your portal. Try signing in again from the email link.");
+      });
+  }, []);
 
   async function logout() {
     await fetch("/api/auth/portal", { method: "DELETE", credentials: "include" });
     router.push("/portal/login");
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f8f6f2] px-4">
+        <p className="text-center text-sm text-slate-600">{loadError}</p>
+        <Button onClick={() => router.push("/portal/login")}>Go to Login</Button>
+      </div>
+    );
   }
 
   if (!data) {
