@@ -12,13 +12,15 @@ import {
   DialogTrigger,
   DialogContent,
 } from "@/components/ui/dialog";
-import { PageTransition } from "@/components/ui/motion";
+import { PageTransition, ScrollReveal } from "@/components/ui/motion";
 import { useFetch, apiPost, apiPatch, apiDelete } from "@/lib/hooks";
 import { formatDate } from "@/lib/utils";
 import {
   PROJECT_STATUSES,
   PRIORITIES,
   PERSON_ROLES,
+  RESEARCH_PHASES,
+  INDIAN_STATES,
   getStatusMeta,
 } from "@/lib/constants";
 
@@ -28,6 +30,12 @@ interface Project {
   description: string | null;
   status: string;
   priority: string;
+  aims: string | null;
+  objectives: string | null;
+  methodology: string | null;
+  studyState: string | null;
+  researchPhase: string;
+  timeline: string | null;
   startDate: string | null;
   endDate: string | null;
   members: Array<{ id: string; role: string; person: { id: string; name: string; role: string; email: string | null } }>;
@@ -60,8 +68,20 @@ export default function ResearchPage() {
   async function createProject(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    await apiPost("/api/projects", Object.fromEntries(fd));
+    const memberIds = people
+      ?.filter((p) => fd.get(`member_${p.id}`) === "on")
+      .map((p) => p.id);
+    await apiPost("/api/projects", {
+      ...Object.fromEntries(fd),
+      notifyTeam: fd.get("notifyTeam") === "on",
+      memberIds,
+    });
     setShowProjectForm(false);
+    refetch();
+  }
+
+  async function updatePhase(projectId: string, researchPhase: string) {
+    await apiPatch(`/api/projects/${projectId}`, { researchPhase, sendEmail: true });
     refetch();
   }
 
@@ -143,19 +163,64 @@ export default function ResearchPage() {
               <Button><Plus className="h-4 w-4" /> New Project</Button>
             </DialogTrigger>
             <DialogContent title="Create Research Project">
-              <form onSubmit={createProject} className="space-y-4">
+              <form onSubmit={createProject} className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
                 <div>
                   <Label>Project Title</Label>
-                  <Input name="title" required className="mt-1" />
+                  <Input name="title" required className="mt-1" placeholder="e.g. Community Health Screening Study" />
                 </div>
                 <div>
                   <Label>Description</Label>
-                  <Textarea name="description" className="mt-1" />
+                  <Textarea name="description" className="mt-1" placeholder="Brief overview of the study" />
+                </div>
+                <div>
+                  <Label>Aims</Label>
+                  <Textarea name="aims" className="mt-1" placeholder="Primary aims of the research" />
+                </div>
+                <div>
+                  <Label>Objectives</Label>
+                  <Textarea name="objectives" className="mt-1" placeholder="Specific measurable objectives" />
+                </div>
+                <div>
+                  <Label>Methodology</Label>
+                  <Textarea name="methodology" className="mt-1" placeholder="Study design, sampling, tools, analysis plan" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Study State / Region</Label>
+                    <Select name="studyState" className="mt-1">
+                      <option value="">Select state</option>
+                      {INDIAN_STATES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Research Phase</Label>
+                    <Select name="researchPhase" className="mt-1" defaultValue="PROTOCOL_DEVELOPMENT">
+                      {RESEARCH_PHASES.map((p) => (
+                        <option key={p.value} value={p.value}>{p.label}</option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Timeline & Milestones</Label>
+                  <Textarea name="timeline" className="mt-1" placeholder="e.g. Month 1-3: Protocol | Month 4-8: Data collection..." />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Start Date</Label>
+                    <Input name="startDate" type="date" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label>End Date</Label>
+                    <Input name="endDate" type="date" className="mt-1" />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Status</Label>
-                    <Select name="status" className="mt-1">
+                    <Select name="status" className="mt-1" defaultValue="PLANNING">
                       {PROJECT_STATUSES.map((s) => (
                         <option key={s.value} value={s.value}>{s.label}</option>
                       ))}
@@ -170,6 +235,23 @@ export default function ResearchPage() {
                     </Select>
                   </div>
                 </div>
+                {people && people.length > 0 && (
+                  <div className="rounded-xl border border-teal-100 bg-teal-50/40 p-3">
+                    <p className="mb-2 text-sm font-medium text-slate-700">Initial team (optional)</p>
+                    <div className="max-h-32 space-y-1 overflow-y-auto">
+                      {people.map((p) => (
+                        <label key={p.id} className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" name={`member_${p.id}`} />
+                          {p.name} {p.email ? `(${p.email})` : ""}
+                        </label>
+                      ))}
+                    </div>
+                    <label className="mt-2 flex items-center gap-2 text-sm">
+                      <input type="checkbox" name="notifyTeam" defaultChecked />
+                      Email selected team about new project
+                    </label>
+                  </div>
+                )}
                 <Button type="submit" className="w-full">Create Project</Button>
               </form>
             </DialogContent>
@@ -183,14 +265,16 @@ export default function ResearchPage() {
         <EmptyState title="No research projects yet" description="Start by creating your first research project." />
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
-          {projects.map((project) => {
+          {projects.map((project, idx) => {
             const statusMeta = getStatusMeta(PROJECT_STATUSES, project.status);
             const priorityMeta = getStatusMeta(PRIORITIES, project.priority);
+            const phaseMeta = getStatusMeta(RESEARCH_PHASES, project.researchPhase ?? "PROTOCOL_DEVELOPMENT");
             const completedTasks = project.tasks.filter((t) => t.status === "COMPLETED").length;
             const isManaging = selectedProject === project.id;
 
             return (
-              <Card key={project.id} className="overflow-hidden">
+              <ScrollReveal key={project.id} delay={idx * 0.05}>
+              <Card className="overflow-hidden">
                 <CardHeader className="border-b border-slate-100 bg-slate-50/50">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -201,11 +285,30 @@ export default function ResearchPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <Badge className={statusMeta.color}>{statusMeta.label}</Badge>
+                      <Badge className={phaseMeta.color}>{phaseMeta.label}</Badge>
                       <Badge className={priorityMeta.color}>{priorityMeta.label}</Badge>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
+                  {(project.studyState || project.aims) && (
+                    <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      {project.studyState && <p><strong>State:</strong> {project.studyState}</p>}
+                      {project.aims && <p className="mt-1 line-clamp-2"><strong>Aims:</strong> {project.aims}</p>}
+                    </div>
+                  )}
+                  <div>
+                    <Label className="text-xs text-slate-500">Update research phase</Label>
+                    <Select
+                      value={project.researchPhase ?? "PROTOCOL_DEVELOPMENT"}
+                      onChange={(e) => updatePhase(project.id, e.target.value)}
+                      className="mt-1 text-xs"
+                    >
+                      {RESEARCH_PHASES.map((p) => (
+                        <option key={p.value} value={p.value}>{p.label}</option>
+                      ))}
+                    </Select>
+                  </div>
                   <div className="flex items-center gap-4 text-xs text-slate-500">
                     <span className="flex items-center gap-1">
                       <Users className="h-3 w-3" />
@@ -287,6 +390,7 @@ export default function ResearchPage() {
                   )}
                 </CardContent>
               </Card>
+              </ScrollReveal>
             );
           })}
         </div>

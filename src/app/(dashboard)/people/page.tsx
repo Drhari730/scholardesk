@@ -103,7 +103,7 @@ export default function PeoplePage() {
                   <Textarea name="notes" className="mt-1" />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-600">
-                  <input type="checkbox" name="sendEmail" />
+                  <input type="checkbox" name="sendEmail" defaultChecked />
                   Send welcome email (requires email address)
                 </label>
                 <Button type="submit" className="w-full">Add Person</Button>

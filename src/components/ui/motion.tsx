@@ -76,3 +76,45 @@ export function StaggerItem({
     </motion.div>
   );
 }
+
+export function ScrollReveal({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+export function AnimatedIcon({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.span
+      className={className}
+      whileHover={{ scale: 1.15, rotate: 5 }}
+      whileInView={{ scale: [1, 1.08, 1] }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6 }}
+    >
+      {children}
+    </motion.span>
+  );
+}

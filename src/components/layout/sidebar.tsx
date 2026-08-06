@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import { LogoMark } from "@/components/brand/logo";
+import { AnimatedIcon } from "@/components/ui/motion";
 import {
   LayoutDashboard,
   FlaskConical,
@@ -41,9 +43,7 @@ export function Sidebar() {
     <>
       <div className="border-b border-teal-800/30 px-6 py-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/20 text-amber-300">
-            <GraduationCap className="h-5 w-5" />
-          </div>
+          <LogoMark size={40} />
           <div>
             <p className="text-sm font-semibold text-white">ScholarDesk</p>
             <p className="text-xs text-teal-200/70">Dr. Hari Prakash</p>
@@ -76,7 +76,9 @@ export function Sidebar() {
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
-              <Icon className="relative h-4 w-4 shrink-0" />
+              <AnimatedIcon className="relative inline-flex">
+                <Icon className="relative h-4 w-4 shrink-0" />
+              </AnimatedIcon>
               <span className="relative">{item.label}</span>
             </Link>
           );

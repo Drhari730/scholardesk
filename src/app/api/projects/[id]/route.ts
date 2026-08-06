@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendEmail, projectPhaseUpdateEmail } from "@/lib/email";
+import { RESEARCH_PHASES } from "@/lib/constants";
 
 export async function GET(
   _req: NextRequest,
@@ -23,15 +25,60 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const body = await req.json();
+  const existing = await prisma.researchProject.findUnique({
+    where: { id },
+    include: { members: { include: { person: true } } },
+  });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   const project = await prisma.researchProject.update({
     where: { id },
     data: {
-      ...body,
-      startDate: body.startDate ? new Date(body.startDate) : undefined,
-      endDate: body.endDate ? new Date(body.endDate) : undefined,
+      title: body.title,
+      description: body.description,
+      status: body.status,
+      priority: body.priority,
+      aims: body.aims,
+      objectives: body.objectives,
+      methodology: body.methodology,
+      studyState: body.studyState,
+      researchPhase: body.researchPhase,
+      timeline: body.timeline,
+      startDate: body.startDate ? new Date(body.startDate) : body.startDate === null ? null : undefined,
+      endDate: body.endDate ? new Date(body.endDate) : body.endDate === null ? null : undefined,
+      tags: body.tags,
+      notes: body.notes,
     },
+    include: { members: { include: { person: true } } },
   });
-  return NextResponse.json(project);
+
+  const emailsSent: string[] = [];
+  if (
+    body.sendEmail !== false &&
+    body.researchPhase &&
+    body.researchPhase !== existing.researchPhase
+  ) {
+    const oldLabel =
+      RESEARCH_PHASES.find((p) => p.value === existing.researchPhase)?.label ??
+      existing.researchPhase;
+    const newLabel =
+      RESEARCH_PHASES.find((p) => p.value === body.researchPhase)?.label ?? body.researchPhase;
+
+    for (const m of existing.members) {
+      if (!m.person.email) continue;
+      const template = projectPhaseUpdateEmail({
+        memberName: m.person.name,
+        projectTitle: project.title,
+        oldPhase: oldLabel,
+        newPhase: newLabel,
+        studyState: project.studyState ?? undefined,
+      });
+      const result = await sendEmail({ to: m.person.email, ...template });
+      if (result.success) emailsSent.push(m.person.email);
+    }
+  }
+
+  return NextResponse.json({ ...project, emailsSent });
 }
 
 export async function DELETE(

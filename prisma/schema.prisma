@@ -18,23 +18,30 @@ model Person {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  projectMembers ProjectMember[]
+  projectMembers    ProjectMember[]
+  publicationMembers PublicationMember[]
   tasks          Task[]
   reminders      Reminder[]
 }
 
 model ResearchProject {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  status      String   @default("ACTIVE")
-  priority    String   @default("MEDIUM")
-  startDate   DateTime?
-  endDate     DateTime?
-  tags        String?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  title         String
+  description   String?
+  status        String   @default("ACTIVE")
+  priority      String   @default("MEDIUM")
+  aims          String?
+  objectives    String?
+  methodology   String?
+  studyState    String?
+  researchPhase String   @default("PROTOCOL_DEVELOPMENT")
+  timeline      String?
+  startDate     DateTime?
+  endDate       DateTime?
+  tags          String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   members ProjectMember[]
   tasks   Task[]
@@ -88,6 +95,20 @@ model Publication {
   updatedAt       DateTime  @updatedAt
 
   reminders Reminder[]
+  members   PublicationMember[]
+}
+
+model PublicationMember {
+  id            String   @id @default(cuid())
+  publicationId String
+  personId      String
+  role          String   @default("CO_AUTHOR")
+  joinedAt      DateTime @default(now())
+
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  person      Person      @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([publicationId, personId])
 }
 
 model Course {

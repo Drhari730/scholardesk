@@ -63,6 +63,42 @@ export const PRIORITIES = [
   { value: "URGENT", label: "Urgent", color: "bg-red-100 text-red-600" },
 ] as const;
 
+export const RESEARCH_PHASES = [
+  { value: "PROTOCOL_DEVELOPMENT", label: "Protocol Development", color: "bg-violet-100 text-violet-700" },
+  { value: "ETHICS_APPROVAL", label: "Ethics / IEC Approval", color: "bg-purple-100 text-purple-700" },
+  { value: "RECRUITMENT", label: "Participant Recruitment", color: "bg-blue-100 text-blue-700" },
+  { value: "DATA_COLLECTION", label: "Data Collection", color: "bg-cyan-100 text-cyan-700" },
+  { value: "DATA_ENTRY", label: "Data Entry & Cleaning", color: "bg-sky-100 text-sky-700" },
+  { value: "DATA_ANALYSIS", label: "Data Analysis", color: "bg-indigo-100 text-indigo-700" },
+  { value: "MANUSCRIPT_WRITING", label: "Manuscript Writing", color: "bg-amber-100 text-amber-700" },
+  { value: "SUBMISSION", label: "Journal Submission", color: "bg-orange-100 text-orange-700" },
+  { value: "PEER_REVIEW", label: "Peer Review", color: "bg-yellow-100 text-yellow-800" },
+  { value: "REVISION", label: "Revision", color: "bg-lime-100 text-lime-800" },
+  { value: "DISSEMINATION", label: "Dissemination", color: "bg-emerald-100 text-emerald-700" },
+  { value: "COMPLETED", label: "Completed", color: "bg-slate-100 text-slate-700" },
+] as const;
+
+export const PUBLICATION_MEMBER_ROLES = [
+  { value: "LEAD_AUTHOR", label: "Lead Author" },
+  { value: "CO_AUTHOR", label: "Co-Author" },
+  { value: "CORRESPONDING_AUTHOR", label: "Corresponding Author" },
+  { value: "WRITER", label: "Manuscript Writer" },
+  { value: "SUBMITTER", label: "Submitter" },
+  { value: "STATISTICIAN", label: "Statistician" },
+  { value: "DATA_COLLECTOR", label: "Data Collector" },
+  { value: "REVIEW_COORDINATOR", label: "Review Coordinator" },
+] as const;
+
+export const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Delhi", "Jammu and Kashmir", "Ladakh", "Puducherry", "Chandigarh",
+  "Multi-State", "National", "International",
+] as const;
+
 export function getStatusMeta<T extends { value: string; label: string; color?: string }>(
   statuses: readonly T[],
   value: string

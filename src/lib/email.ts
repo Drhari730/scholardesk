@@ -159,10 +159,120 @@ export function welcomePersonEmail(params: { name: string; role: string }) {
     <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
       You have been added to Dr. Hari Prakash's academic team on ScholarDesk as a <strong>${params.role}</strong>.
     </p>
-    <p style="margin:0;color:#475569;font-size:14px;">You may receive task assignments and reminders via email. Please ensure you respond promptly to any communications.</p>
+    <p style="margin:0;color:#475569;font-size:14px;">You may receive task assignments, publication updates, and reminders via email. Please respond promptly to any communications.</p>
   `;
   return {
     subject: `Welcome to Dr. Hari Prakash's Research Team`,
+    html: baseTemplate(content),
+  };
+}
+
+export function projectCreatedEmail(params: {
+  memberName: string;
+  projectTitle: string;
+  aims?: string;
+  objectives?: string;
+  methodology?: string;
+  studyState?: string;
+  researchPhase?: string;
+  timeline?: string;
+}) {
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.memberName}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      A new public health research project has been set up on ScholarDesk:
+    </p>
+    <div style="background:#f0fdfa;border-left:4px solid #0d9488;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:#0f5c5c;font-size:18px;font-weight:600;">${params.projectTitle}</p>
+      ${params.researchPhase ? `<p style="margin:0 0 8px;color:#64748b;font-size:14px;"><strong>Phase:</strong> ${params.researchPhase}</p>` : ""}
+      ${params.studyState ? `<p style="margin:0 0 8px;color:#64748b;font-size:14px;"><strong>State:</strong> ${params.studyState}</p>` : ""}
+      ${params.aims ? `<p style="margin:8px 0 0;color:#475569;font-size:14px;"><strong>Aims:</strong> ${params.aims}</p>` : ""}
+      ${params.objectives ? `<p style="margin:8px 0 0;color:#475569;font-size:14px;"><strong>Objectives:</strong> ${params.objectives}</p>` : ""}
+      ${params.methodology ? `<p style="margin:8px 0 0;color:#475569;font-size:14px;"><strong>Methodology:</strong> ${params.methodology}</p>` : ""}
+      ${params.timeline ? `<p style="margin:8px 0 0;color:#475569;font-size:14px;"><strong>Timeline:</strong> ${params.timeline}</p>` : ""}
+    </div>
+    <p style="margin:0;color:#475569;font-size:14px;">You are part of this project team. Task assignments and updates will follow as the study progresses.</p>
+  `;
+  return {
+    subject: `New Research Project: ${params.projectTitle}`,
+    html: baseTemplate(content),
+  };
+}
+
+export function publicationTeamEmail(params: {
+  memberName: string;
+  publicationTitle: string;
+  role: string;
+  journal?: string;
+  status?: string;
+}) {
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.memberName}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      You have been added to a publication team by Dr. Hari Prakash:
+    </p>
+    <div style="background:#eff6ff;border-left:4px solid #3b82f6;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:#1e3a8a;font-size:18px;font-weight:600;">${params.publicationTitle}</p>
+      <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Your role: <strong>${params.role}</strong></p>
+      ${params.journal ? `<p style="margin:0 0 8px;color:#64748b;font-size:14px;">Journal: ${params.journal}</p>` : ""}
+      ${params.status ? `<p style="margin:0;color:#64748b;font-size:14px;">Current status: ${params.status}</p>` : ""}
+    </div>
+    <p style="margin:0;color:#475569;font-size:14px;">Please coordinate with the team on manuscript writing, submission, and revisions as needed.</p>
+  `;
+  return {
+    subject: `Publication Team: ${params.publicationTitle}`,
+    html: baseTemplate(content),
+  };
+}
+
+export function publicationStatusEmail(params: {
+  memberName: string;
+  publicationTitle: string;
+  oldStatus: string;
+  newStatus: string;
+  journal?: string;
+  reviewerComments?: string;
+}) {
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.memberName}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      The publication status has been updated:
+    </p>
+    <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:#92400e;font-size:18px;font-weight:600;">${params.publicationTitle}</p>
+      ${params.journal ? `<p style="margin:0 0 8px;color:#64748b;font-size:14px;">Journal: ${params.journal}</p>` : ""}
+      <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Status: <strong>${params.oldStatus}</strong> → <strong>${params.newStatus}</strong></p>
+      ${params.reviewerComments ? `<p style="margin:8px 0 0;color:#475569;font-size:14px;"><strong>Reviewer comments:</strong> ${params.reviewerComments}</p>` : ""}
+    </div>
+    <p style="margin:0;color:#475569;font-size:14px;">Please review and take any required action for your role on this manuscript.</p>
+  `;
+  return {
+    subject: `Publication Update: ${params.publicationTitle} — ${params.newStatus}`,
+    html: baseTemplate(content),
+  };
+}
+
+export function projectPhaseUpdateEmail(params: {
+  memberName: string;
+  projectTitle: string;
+  oldPhase: string;
+  newPhase: string;
+  studyState?: string;
+}) {
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.memberName}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      A research project has moved to a new phase:
+    </p>
+    <div style="background:#f0fdfa;border-left:4px solid #0d9488;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:#0f5c5c;font-size:18px;font-weight:600;">${params.projectTitle}</p>
+      <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Phase: <strong>${params.oldPhase}</strong> → <strong>${params.newPhase}</strong></p>
+      ${params.studyState ? `<p style="margin:0;color:#64748b;font-size:14px;">Study state: ${params.studyState}</p>` : ""}
+    </div>
+    <p style="margin:0;color:#475569;font-size:14px;">Please align your tasks and deliverables with this phase of the study.</p>
+  `;
+  return {
+    subject: `Project Phase Update: ${params.projectTitle}`,
     html: baseTemplate(content),
   };
 }
