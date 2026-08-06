@@ -5,7 +5,7 @@ import { verifyPasswordHash, hashPassword } from "@/lib/password";
 
 const COOKIE_NAME = "scholardesk_session";
 const PORTAL_COOKIE = "scholardesk_portal";
-const SESSION_DURATION = "7d";
+const SESSION_DURATION = "30d";
 
 export type Session =
   | { role: "owner" }
@@ -166,7 +166,7 @@ export function sessionCookieOptions(token: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 30,
     path: "/",
   };
 }

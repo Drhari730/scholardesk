@@ -106,6 +106,14 @@ export default function LoginForm() {
           <p className="mt-6 text-center text-xs text-slate-400">
             This app is private. Only authorized access is permitted.
           </p>
+
+          <div className="mt-4 rounded-xl border border-teal-100 bg-teal-50/50 p-3 text-xs text-slate-600">
+            <p className="font-medium text-teal-900">📱 Use on your phone</p>
+            <p className="mt-1">
+              Sign in once, then tap <strong>Share → Add to Home Screen</strong> (iPhone) or{" "}
+              <strong>Menu → Install app</strong> (Android). Open the ScholarDesk icon anytime — no email link needed.
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>

@@ -22,6 +22,11 @@ export const metadata: Metadata = {
     "Personal academic management suite for research, teaching, publications, and reminders.",
   robots: { index: false, follow: false },
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "ScholarDesk",
+    statusBarStyle: "black-translucent",
+  },
   icons: {
     icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
     apple: [{ url: "/logo.svg", type: "image/svg+xml" }],
