@@ -19,6 +19,7 @@ interface SettingsData {
   emailOnPlanning: boolean;
   emailOnProject: boolean;
   emailOnDigest: boolean;
+  emailOnBackup: boolean;
   planningReminderDays: number;
 }
 
@@ -27,6 +28,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"json" | "xlsx">("json");
 
   async function saveProfile(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,7 +43,7 @@ export default function SettingsPage() {
       emailOnPlanning: fd.get("emailOnPlanning") === "on",
       emailOnProject: fd.get("emailOnProject") === "on",
       emailOnDigest: fd.get("emailOnDigest") === "on",
-      planningReminderDays: Number(fd.get("planningReminderDays")),
+      emailOnBackup: fd.get("emailOnBackup") === "on",
     });
     setSaved(true);
     refetch();
@@ -64,15 +66,16 @@ export default function SettingsPage() {
     }
   }
 
-  async function exportData() {
+  async function exportData(format: "json" | "xlsx") {
     setExporting(true);
+    setExportFormat(format);
     try {
-      const res = await fetch("/api/settings/export", { credentials: "include" });
+      const res = await fetch(`/api/settings/export?format=${format}`, { credentials: "include" });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `scholardesk-backup-${new Date().toISOString().split("T")[0]}.json`;
+      a.download = `scholardesk-backup-${new Date().toISOString().split("T")[0]}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -143,18 +146,14 @@ export default function SettingsPage() {
                       <input type="checkbox" name="emailOnDigest" defaultChecked={settings.emailOnDigest} />
                       Weekly Monday digest email to me
                     </label>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" name="emailOnBackup" defaultChecked={settings.emailOnBackup} />
+                      Weekly data backup email (JSON + Excel attached)
+                    </label>
                   </div>
-                  <div className="mt-3">
-                    <Label>Remind me before events (days)</Label>
-                    <Input
-                      name="planningReminderDays"
-                      type="number"
-                      min={1}
-                      max={30}
-                      defaultValue={settings.planningReminderDays}
-                      className="mt-1 w-24"
-                    />
-                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Planning events also send reminders 7 days and 1 day before (when enabled per event).
+                  </p>
                 </div>
 
                 <Button type="submit" className="gap-2">
@@ -204,13 +203,19 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <p className="mb-4 text-sm text-slate-600">
-                  Download a complete JSON backup of all your people, projects, publications,
-                  planning events, teaching data, and reminders.
+                  Download a complete backup of all your people, projects, publications,
+                  planning events, teaching data, and reminders — as JSON or Excel.
                 </p>
-                <Button onClick={exportData} disabled={exporting} variant="outline" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  {exporting ? "Exporting…" : "Download Backup"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => exportData("json")} disabled={exporting} variant="outline" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    {exporting && exportFormat === "json" ? "Exporting…" : "Download JSON"}
+                  </Button>
+                  <Button onClick={() => exportData("xlsx")} disabled={exporting} variant="outline" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    {exporting && exportFormat === "xlsx" ? "Exporting…" : "Download Excel"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </FadeIn>

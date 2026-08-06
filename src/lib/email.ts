@@ -16,9 +16,10 @@ export interface SendEmailParams {
   to: string;
   subject: string;
   html: string;
+  attachments?: Array<{ filename: string; content: string }>;
 }
 
-export async function sendEmail({ to, subject, html }: SendEmailParams) {
+export async function sendEmail({ to, subject, html, attachments }: SendEmailParams) {
   if (!resend) {
     console.warn("[email] RESEND_API_KEY not set — skipping email to", to);
     return { success: false, reason: "not_configured" };
@@ -30,6 +31,7 @@ export async function sendEmail({ to, subject, html }: SendEmailParams) {
       to: [to],
       subject,
       html,
+      attachments,
     });
 
     if (error) {
@@ -366,6 +368,57 @@ export function weeklyDigestEmail(params: {
 
   return {
     subject: `ScholarDesk Weekly Digest — ${params.weekRange}`,
+    html: baseTemplate(content),
+  };
+}
+
+export function planningEventConfirmedEmail(params: {
+  userName: string;
+  title: string;
+  type: string;
+  startDate: string;
+  endDate?: string;
+  location?: string;
+  venue?: string;
+}) {
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.userName}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      You marked an invitation as <strong>Confirmed</strong> on ScholarDesk:
+    </p>
+    <div style="background:#ecfdf5;border-left:4px solid #10b981;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:#065f46;font-size:18px;font-weight:600;">${params.title}</p>
+      <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Type: ${params.type.replace(/_/g, " ")}</p>
+      <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Date: ${params.startDate}${params.endDate ? ` – ${params.endDate}` : ""}</p>
+      ${params.location ? `<p style="margin:0 0 8px;color:#64748b;font-size:14px;">Location: ${params.location}</p>` : ""}
+      ${params.venue ? `<p style="margin:0;color:#64748b;font-size:14px;">Venue: ${params.venue}</p>` : ""}
+    </div>
+    <p style="margin:0;color:#475569;font-size:14px;">Review your prep checklist in Month Planning before you travel.</p>
+  `;
+  return {
+    subject: `Confirmed: ${params.title}`,
+    html: baseTemplate(content),
+  };
+}
+
+export function weeklyBackupEmail(params: { userName: string; date: string; recordCounts: Record<string, number> }) {
+  const counts = Object.entries(params.recordCounts)
+    .map(([k, v]) => `<li style="margin:4px 0;color:#475569;font-size:14px;">${k}: <strong>${v}</strong></li>`)
+    .join("");
+
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.userName}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      Your weekly ScholarDesk data backup for <strong>${params.date}</strong> is attached (JSON + Excel).
+    </p>
+    <div style="background:#f0fdfa;border-left:4px solid #0d9488;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 12px;color:#0f5c5c;font-size:14px;font-weight:600;">Records in this backup:</p>
+      <ul style="margin:0;padding-left:20px;">${counts}</ul>
+    </div>
+    <p style="margin:0;color:#475569;font-size:14px;">Store these files safely. You can also download a fresh backup anytime from Settings.</p>
+  `;
+  return {
+    subject: `ScholarDesk Weekly Backup — ${params.date}`,
     html: baseTemplate(content),
   };
 }

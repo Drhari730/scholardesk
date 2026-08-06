@@ -64,6 +64,8 @@ export async function POST(req: NextRequest) {
       notes: body.notes,
       checklist,
       remindEmail: body.remindEmail !== false,
+      reminder7DaySent: false,
+      reminder1DaySent: false,
     },
   });
 

@@ -5,6 +5,15 @@ import { getEmailPrefs } from "@/lib/auth";
 import { formatDateTime, formatDate } from "@/lib/utils";
 import { EVENT_TYPES } from "@/lib/constants";
 
+function dayWindow(now: Date, daysAhead: number) {
+  const target = new Date(now);
+  target.setDate(target.getDate() + daysAhead);
+  const start = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const end = new Date(start);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 export async function GET(req: NextRequest) {
   const secret = req.headers.get("authorization")?.replace("Bearer ", "");
   const cronSecret = process.env.CRON_SECRET;
@@ -52,44 +61,49 @@ export async function GET(req: NextRequest) {
   }
 
   if (prefs.emailOnPlanning && prefs.ownerEmail) {
-    const reminderDays = prefs.planningReminderDays ?? 7;
-    const targetDate = new Date(now);
-    targetDate.setDate(targetDate.getDate() + reminderDays);
-    const dayStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
-    const dayEnd = new Date(dayStart);
-    dayEnd.setHours(23, 59, 59);
+    const reminderWindows = [
+      { days: 7, sentField: "reminder7DaySent" as const },
+      { days: 1, sentField: "reminder1DaySent" as const },
+    ];
 
-    const upcomingEvents = await prisma.academicEvent.findMany({
-      where: {
-        remindEmail: true,
-        reminderSent: false,
-        startDate: { gte: dayStart, lte: dayEnd },
-        status: { notIn: ["COMPLETED", "CANCELLED"] },
-      },
-    });
+    for (const { days, sentField } of reminderWindows) {
+      const { start, end } = dayWindow(now, days);
 
-    for (const ev of upcomingEvents) {
-      const typeLabel = EVENT_TYPES.find((t) => t.value === ev.type)?.label ?? ev.type;
-      const template = planningEventEmail({
-        title: ev.title,
-        type: typeLabel,
-        startDate: formatDate(ev.startDate),
-        endDate: ev.endDate ? formatDate(ev.endDate) : undefined,
-        location: ev.location ?? undefined,
-        isReminder: true,
-        daysUntil: reminderDays,
+      const upcomingEvents = await prisma.academicEvent.findMany({
+        where: {
+          remindEmail: true,
+          [sentField]: false,
+          startDate: { gte: start, lte: end },
+          status: { notIn: ["COMPLETED", "CANCELLED"] },
+        },
       });
-      const result = await sendEmail({ to: prefs.ownerEmail, ...template });
-      if (result.success) {
-        await prisma.academicEvent.update({ where: { id: ev.id }, data: { reminderSent: true } });
-        results.push({ id: ev.id, status: "planning_sent", to: prefs.ownerEmail });
+
+      for (const ev of upcomingEvents) {
+        const typeLabel = EVENT_TYPES.find((t) => t.value === ev.type)?.label ?? ev.type;
+        const template = planningEventEmail({
+          title: ev.title,
+          type: typeLabel,
+          startDate: formatDate(ev.startDate),
+          endDate: ev.endDate ? formatDate(ev.endDate) : undefined,
+          location: ev.location ?? undefined,
+          isReminder: true,
+          daysUntil: days,
+        });
+        const result = await sendEmail({ to: prefs.ownerEmail, ...template });
+        if (result.success) {
+          await prisma.academicEvent.update({
+            where: { id: ev.id },
+            data: { [sentField]: true },
+          });
+          results.push({ id: ev.id, status: `planning_${days}d_sent`, to: prefs.ownerEmail });
+        }
       }
     }
   }
 
   return NextResponse.json({
     processed: results.length,
-    sent: results.filter((r) => r.status === "sent" || r.status === "planning_sent").length,
+    sent: results.filter((r) => r.status === "sent" || r.status.startsWith("planning_")).length,
     results,
   });
 }

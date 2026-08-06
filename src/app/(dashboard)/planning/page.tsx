@@ -129,6 +129,7 @@ export default function PlanningPage() {
       startDate: fd.get("startDate") + "T09:00:00",
       endDate: fd.get("endDate") ? fd.get("endDate") + "T18:00:00" : null,
       sendEmail: fd.get("sendEmail") === "on",
+      remindEmail: fd.get("remindEmail") === "on",
     });
     if (result.conflicts?.length) {
       setCreateConflicts(result.conflicts);
@@ -148,7 +149,7 @@ export default function PlanningPage() {
   }
 
   async function updateStatus(id: string, status: string) {
-    await apiPatch(`/api/academic-events/${id}`, { status });
+    await apiPatch(`/api/academic-events/${id}`, { status, sendEmail: true });
     refetch();
   }
 
@@ -499,7 +500,11 @@ export default function PlanningPage() {
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="sendEmail" defaultChecked />
-              Email me about this event
+              Email me when this event is added
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="remindEmail" defaultChecked />
+              Remind me 7 days and 1 day before
             </label>
             {createConflicts.length > 0 && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

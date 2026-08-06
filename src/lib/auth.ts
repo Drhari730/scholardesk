@@ -85,6 +85,7 @@ export async function getEmailPrefs() {
     emailOnPlanning: settings?.emailOnPlanning ?? true,
     emailOnProject: settings?.emailOnProject ?? true,
     emailOnDigest: settings?.emailOnDigest ?? true,
+    emailOnBackup: settings?.emailOnBackup ?? true,
     planningReminderDays: settings?.planningReminderDays ?? 7,
     ownerEmail: settings?.email ?? null,
   };

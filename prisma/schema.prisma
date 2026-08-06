@@ -249,8 +249,10 @@ model AppSettings {
   emailOnPlanning      Boolean  @default(true)
   emailOnProject       Boolean  @default(true)
   emailOnDigest        Boolean  @default(true)
+  emailOnBackup        Boolean  @default(true)
   planningReminderDays Int      @default(7)
   lastDigestSentAt     DateTime?
+  lastBackupSentAt     DateTime?
   updatedAt            DateTime @updatedAt
 }
 
@@ -276,7 +278,8 @@ model AcademicEvent {
   notes             String?
   checklist         String?
   remindEmail       Boolean   @default(true)
-  reminderSent      Boolean   @default(false)
+  reminder7DaySent  Boolean   @default(false)
+  reminder1DaySent  Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }

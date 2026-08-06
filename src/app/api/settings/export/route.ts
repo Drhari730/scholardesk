@@ -1,51 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionFromRequest } from "@/lib/auth";
+import { gatherExportData, exportToJson } from "@/lib/export-data";
+import { exportToExcelBuffer } from "@/lib/export-excel";
 
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [
-    settings,
-    people,
-    projects,
-    publications,
-    courses,
-    exams,
-    reminders,
-    academicEvents,
-    tasks,
-  ] = await Promise.all([
-    prisma.appSettings.findUnique({ where: { id: "default" } }),
-    prisma.person.findMany({ include: { projectMembers: true } }),
-    prisma.researchProject.findMany({ include: { members: true, tasks: true } }),
-    prisma.publication.findMany({ include: { members: true, revisions: true } }),
-    prisma.course.findMany({ include: { sessions: true, exams: true } }),
-    prisma.exam.findMany({ include: { marks: true } }),
-    prisma.reminder.findMany(),
-    prisma.academicEvent.findMany(),
-    prisma.task.findMany(),
-  ]);
+  const format = req.nextUrl.searchParams.get("format") ?? "json";
+  const data = await gatherExportData();
+  const date = new Date().toISOString().split("T")[0];
 
-  const exportData = {
-    exportedAt: new Date().toISOString(),
-    version: "1.0",
-    settings,
-    people,
-    projects,
-    publications,
-    courses,
-    exams,
-    reminders,
-    academicEvents,
-    tasks,
-  };
+  if (format === "xlsx") {
+    const buffer = exportToExcelBuffer(data);
+    return new NextResponse(new Uint8Array(buffer), {
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="scholardesk-backup-${date}.xlsx"`,
+      },
+    });
+  }
 
-  return new NextResponse(JSON.stringify(exportData, null, 2), {
+  return new NextResponse(exportToJson(data), {
     headers: {
       "Content-Type": "application/json",
-      "Content-Disposition": `attachment; filename="scholardesk-backup-${new Date().toISOString().split("T")[0]}.json"`,
+      "Content-Disposition": `attachment; filename="scholardesk-backup-${date}.json"`,
     },
   });
 }

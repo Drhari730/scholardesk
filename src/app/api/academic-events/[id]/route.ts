@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendEmail, planningEventConfirmedEmail } from "@/lib/email";
+import { getEmailPrefs } from "@/lib/auth";
+import { formatDate } from "@/lib/utils";
+import { EVENT_TYPES } from "@/lib/constants";
 
 export async function PATCH(
   req: NextRequest,
@@ -7,6 +11,10 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const body = await req.json();
+
+  const existing = await prisma.academicEvent.findUnique({ where: { id } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   const event = await prisma.academicEvent.update({
     where: { id },
     data: {
@@ -32,6 +40,31 @@ export async function PATCH(
       remindEmail: body.remindEmail,
     },
   });
+
+  const prefs = await getEmailPrefs();
+  const settings = await prisma.appSettings.findUnique({ where: { id: "default" } });
+  const userName = settings?.userName ?? "Dr. Hari Prakash";
+
+  if (
+    body.status === "CONFIRMED" &&
+    existing.status !== "CONFIRMED" &&
+    prefs.emailOnPlanning &&
+    prefs.ownerEmail &&
+    body.sendEmail !== false
+  ) {
+    const typeLabel = EVENT_TYPES.find((t) => t.value === event.type)?.label ?? event.type;
+    const template = planningEventConfirmedEmail({
+      userName,
+      title: event.title,
+      type: typeLabel,
+      startDate: formatDate(event.startDate),
+      endDate: event.endDate ? formatDate(event.endDate) : undefined,
+      location: event.location ?? undefined,
+      venue: event.venue ?? undefined,
+    });
+    await sendEmail({ to: prefs.ownerEmail, ...template });
+  }
+
   return NextResponse.json(event);
 }
 
