@@ -155,9 +155,20 @@ export default function ResearchPage() {
   async function createTask(e: React.FormEvent<HTMLFormElement>, projectId: string) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const assignToAll = fd.get("assignToAll") === "on";
+    const assigneeId = fd.get("assigneeId");
+    if (!assignToAll && !assigneeId) {
+      alert("Select a team member or tick 'All team members'");
+      return;
+    }
     await apiPost("/api/tasks", {
-      ...Object.fromEntries(fd),
+      title: fd.get("title"),
+      description: fd.get("description"),
+      priority: fd.get("priority"),
+      dueDate: fd.get("dueDate") || undefined,
       projectId,
+      assigneeId: assignToAll ? undefined : assigneeId,
+      assignToAll,
       createReminder: fd.get("createReminder") === "on",
       sendEmail: fd.get("sendEmail") === "on",
     });
@@ -632,8 +643,11 @@ export default function ResearchPage() {
         <DialogRoot open={!!showTaskForm} onOpenChange={() => setShowTaskForm(null)}>
           <DialogContent title="Assign Task to Team Member">
             <form onSubmit={(e) => createTask(e, showTaskForm)} className="space-y-4">
-              <div><Label>Task Title</Label><Input name="title" required className="mt-1" /></div>
-              <div><Label>Description</Label><Textarea name="description" className="mt-1" /></div>
+              <p className="text-sm text-slate-500">
+                Project: <strong>{projects?.find((p) => p.id === showTaskForm)?.title}</strong>
+              </p>
+              <div><Label>Task Title</Label><Input name="title" required className="mt-1" placeholder="e.g. Submit weekly progress report" /></div>
+              <div><Label>Description / Instructions</Label><Textarea name="description" className="mt-1" placeholder="What they need to do..." /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Priority</Label>
@@ -645,20 +659,26 @@ export default function ResearchPage() {
               </div>
               <div>
                 <Label>Assign To</Label>
-                <Select name="assigneeId" className="mt-1">
-                  <option value="">Unassigned</option>
-                  {people?.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}{p.email ? ` (${p.email})` : ""}
-                    </option>
-                  ))}
+                <Select name="assigneeId" className="mt-1" defaultValue="">
+                  <option value="">Select one team member</option>
+                  {projects
+                    ?.find((p) => p.id === showTaskForm)
+                    ?.members.map((m) => (
+                      <option key={m.person.id} value={m.person.id}>
+                        {m.person.name}{m.person.email ? ` (${m.person.email})` : ""}
+                      </option>
+                    ))}
                 </Select>
+                <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                  <input type="checkbox" name="assignToAll" />
+                  Assign to <strong>all</strong> team members on this project (common task)
+                </label>
               </div>
               <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" name="createReminder" defaultChecked /> In-app reminder
               </label>
               <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input type="checkbox" name="sendEmail" defaultChecked /> Email assignee now
+                <input type="checkbox" name="sendEmail" defaultChecked /> Email assignee(s) now
               </label>
               <Button type="submit" className="w-full">Assign Task & Email</Button>
             </form>
