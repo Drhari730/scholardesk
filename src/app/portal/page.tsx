@@ -6,8 +6,9 @@ import { LogoMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, BookOpen, FlaskConical, CheckCircle2, Paperclip, Download, Loader2 } from "lucide-react";
+import { LogOut, BookOpen, FlaskConical, CheckCircle2, Paperclip, Download, Loader2, Sparkles, Clock, CalendarDays } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { getTeamPortalQuote, formatPortalDateTime, getTeamGreeting } from "@/lib/quotes";
 import { TASK_STATUSES, PUBLICATION_STATUSES, PORTAL_TASK_STATUSES, getStatusMeta } from "@/lib/constants";
 
 type PortalAttachment = { id: string; filename: string; size: number; mimeType: string };
@@ -39,6 +40,12 @@ export default function PortalPage() {
   const [loadError, setLoadError] = useState("");
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [taskMessage, setTaskMessage] = useState("");
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   async function loadDashboard() {
     const r = await fetch("/api/portal/dashboard", { credentials: "include" });
@@ -111,6 +118,10 @@ export default function PortalPage() {
     return <div className="flex min-h-screen items-center justify-center bg-[#f8f6f2]">Loading…</div>;
   }
 
+  const quote = getTeamPortalQuote(now);
+  const { date: todayDate, time: todayTime } = formatPortalDateTime(now);
+  const pendingTasks = data.tasks.length;
+
   return (
     <div className="min-h-screen bg-[#f8f6f2]">
       <header className="border-b border-slate-200 bg-white px-4 py-4">
@@ -118,7 +129,7 @@ export default function PortalPage() {
           <div className="flex items-center gap-3">
             <LogoMark size={36} />
             <div>
-              <p className="font-semibold text-slate-900">Hello, {data.person.name}</p>
+              <p className="font-semibold text-slate-900">{getTeamGreeting(data.person.name, now)}</p>
               <p className="text-xs text-slate-500">Team Portal · {data.person.role.replace(/_/g, " ")}</p>
             </div>
           </div>
@@ -129,6 +140,30 @@ export default function PortalPage() {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+        <div className="overflow-hidden rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-800 via-teal-700 to-slate-800 p-5 text-white shadow-lg sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-teal-200/90">
+                <CalendarDays className="h-3.5 w-3.5" /> {todayDate}
+              </p>
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-amber-200">
+                <Clock className="h-3.5 w-3.5" /> {todayTime} IST
+              </p>
+              {pendingTasks > 0 ? (
+                <p className="mt-3 text-sm text-teal-100">
+                  You have <strong className="text-white">{pendingTasks}</strong> task{pendingTasks === 1 ? "" : "s"} waiting — update your status when you make progress.
+                </p>
+              ) : (
+                <p className="mt-3 text-sm text-teal-100">No pending tasks right now. Check your projects below.</p>
+              )}
+            </div>
+            <blockquote className="max-w-sm rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <Sparkles className="mb-2 h-4 w-4 text-amber-300" />
+              <p className="text-sm italic leading-relaxed text-teal-50">&ldquo;{quote.text}&rdquo;</p>
+              <footer className="mt-2 text-xs text-amber-200/80">— {quote.author}</footer>
+            </blockquote>
+          </div>
+        </div>
         {(data.tasks.length === 0 && data.publications.length === 0 && data.projects.length === 0) && (
           <Card className="border-amber-200 bg-amber-50/50">
             <CardContent className="p-5 text-sm text-amber-900">

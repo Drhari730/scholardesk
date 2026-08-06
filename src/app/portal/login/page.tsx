@@ -5,11 +5,15 @@ import { useRouter } from "next/navigation";
 import { LogoMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { getTeamPortalQuote, formatPortalDateTime } from "@/lib/quotes";
+import { Sparkles } from "lucide-react";
 
 export default function PortalLoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const quote = getTeamPortalQuote();
+  const { date, time } = formatPortalDateTime();
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.search.includes("error=expired")) {
@@ -64,6 +68,12 @@ export default function PortalLoginPage() {
         <p className="mt-4 text-center text-xs text-slate-400">
           Portal access is enabled by Dr. Hari Prakash from the People page.
         </p>
+        <div className="mt-5 rounded-xl border border-teal-100 bg-teal-50/50 p-4 text-center">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-teal-600">{date} · {time} IST</p>
+          <Sparkles className="mx-auto my-2 h-4 w-4 text-amber-500" />
+          <p className="text-xs italic leading-relaxed text-slate-600">&ldquo;{quote.text}&rdquo;</p>
+          <p className="mt-1 text-[10px] text-slate-400">— {quote.author}</p>
+        </div>
       </div>
     </div>
   );

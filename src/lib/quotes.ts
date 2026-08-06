@@ -33,6 +33,42 @@ export const DAILY_QUOTES = [
   { text: "Today: one task completed is one step closer to your next breakthrough.", author: "ScholarDesk" },
 ];
 
+/** Motivational quotes for research students & team members in the portal */
+export const TEAM_PORTAL_QUOTES = [
+  { text: "Finish what you start today — your supervisor is counting on you.", author: "ScholarDesk" },
+  { text: "A task marked done is worth more than ten tasks planned. Update your status now.", author: "ScholarDesk" },
+  { text: "Research progress is built one small completed step at a time.", author: "ScholarDesk" },
+  { text: "Don't wait for perfect conditions. Start the task in front of you.", author: "Arthur Ashe" },
+  { text: "Your contribution to this project matters. Show up and deliver.", author: "ScholarDesk" },
+  { text: "Delayed is better than silent — update your status so the team can help.", author: "ScholarDesk" },
+  { text: "The difference between a student and a researcher is follow-through.", author: "ScholarDesk" },
+  { text: "Every data point collected, every paragraph written — it all adds up.", author: "ScholarDesk" },
+  { text: "Discipline today creates publications tomorrow.", author: "ScholarDesk" },
+  { text: "Ask for help early. Finish strong together.", author: "ScholarDesk" },
+  { text: "Quality work is never an accident. It comes from consistent effort.", author: "John Wooden" },
+  { text: "Your supervisor trusts you with this task. Honor that trust.", author: "ScholarDesk" },
+  { text: "One focused hour beats a whole day of procrastination.", author: "ScholarDesk" },
+  { text: "Mark your task In Progress — momentum begins with honesty.", author: "ScholarDesk" },
+  { text: "Great teams communicate through action, not just messages.", author: "ScholarDesk" },
+  { text: "Today's effort is tomorrow's evidence.", author: "ScholarDesk" },
+  { text: "You are part of research that can improve lives. Take your role seriously.", author: "ScholarDesk" },
+  { text: "Small wins daily lead to manuscripts eventually.", author: "ScholarDesk" },
+  { text: "Be the team member who finishes — not the one who disappears.", author: "ScholarDesk" },
+  { text: "If it's due soon, start now. Future you will be grateful.", author: "ScholarDesk" },
+  { text: "Excellence in field work starts with showing up on time.", author: "ScholarDesk" },
+  { text: "Read the instructions. Do the work. Update the portal. Simple.", author: "ScholarDesk" },
+  { text: "A delayed task with a reason is professional. Silence is not.", author: "ScholarDesk" },
+  { text: "You don't need to be perfect — you need to be progressing.", author: "ScholarDesk" },
+  { text: "Team science works when everyone does their part. Today is your part.", author: "ScholarDesk" },
+  { text: "The best researchers are reliable. Be reliable today.", author: "ScholarDesk" },
+  { text: "Your name on this project is your reputation. Make it count.", author: "ScholarDesk" },
+  { text: "Finish one task before lunch. You'll feel unstoppable.", author: "ScholarDesk" },
+  { text: "Public health research needs people who follow through. That's you.", author: "ScholarDesk" },
+  { text: "Log in, check your tasks, update your status — that's professionalism.", author: "ScholarDesk" },
+  { text: "Hard work beats talent when talent doesn't work hard.", author: "Tim Notke" },
+  { text: "Every finished task moves the whole team forward.", author: "ScholarDesk" },
+];
+
 export function getDailyQuote(date = new Date()) {
   const start = new Date(date.getFullYear(), 0, 0);
   const diff = date.getTime() - start.getTime();
@@ -55,4 +91,38 @@ export function formatWelcomeDate(date = new Date()) {
     day: "numeric",
     timeZone: "Asia/Kolkata",
   });
+}
+
+export function getTeamPortalQuote(date = new Date()) {
+  const start = new Date(date.getFullYear(), 0, 0);
+  const diff = date.getTime() - start.getTime();
+  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+  return TEAM_PORTAL_QUOTES[dayOfYear % TEAM_PORTAL_QUOTES.length];
+}
+
+export function formatPortalDateTime(date = new Date()) {
+  return {
+    date: date.toLocaleDateString("en-IN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "Asia/Kolkata",
+    }),
+    time: date.toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      timeZone: "Asia/Kolkata",
+    }),
+  };
+}
+
+export function getTeamGreeting(name: string, date = new Date()) {
+  const hour = date.getHours();
+  const first = name.trim().split(/\s+/)[0] || name;
+  if (hour < 12) return `Good Morning, ${first}`;
+  if (hour < 17) return `Good Afternoon, ${first}`;
+  return `Good Evening, ${first}`;
 }
