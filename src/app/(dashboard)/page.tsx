@@ -106,6 +106,7 @@ const statusBadge: Record<string, string> = {
 export default function DashboardPage() {
   const { data, loading } = useFetch<DashboardData>("/api/dashboard");
   const { data: portfolio } = useFetch<PortfolioData>("/api/portfolio");
+  const { data: conflicts } = useFetch<Array<{ message: string; severity: string }>>("/api/conflicts");
 
   if (loading || !data) {
     return (
@@ -192,6 +193,22 @@ export default function DashboardPage() {
           </div>
         }
       />
+
+      {conflicts && conflicts.length > 0 && (
+        <FadeIn>
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+            <p className="mb-2 flex items-center gap-2 text-sm font-medium text-red-800">
+              <AlertTriangle className="h-4 w-4" /> Schedule conflicts detected
+            </p>
+            <ul className="space-y-1 text-sm text-red-700">
+              {conflicts.slice(0, 3).map((c, i) => <li key={i}>• {c.message}</li>)}
+            </ul>
+            <Link href="/planning" className="mt-2 inline-block text-xs font-medium text-red-800 underline">
+              Review in Month Planning →
+            </Link>
+          </div>
+        </FadeIn>
+      )}
 
       {data.stats.overdueReminders > 0 && (
         <FadeIn>

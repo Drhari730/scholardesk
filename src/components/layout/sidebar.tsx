@@ -19,6 +19,7 @@ import {
   X,
   ClipboardList,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -36,6 +37,7 @@ const navItems = [
   { href: "/calendar", label: "Google Calendar", icon: Calendar },
   { href: "/people", label: "People", icon: Users },
   { href: "/reminders", label: "Reminders", icon: Bell },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {

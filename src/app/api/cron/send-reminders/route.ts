@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmail, reminderEmail, isEmailConfigured } from "@/lib/email";
-import { formatDateTime } from "@/lib/utils";
+import { sendEmail, reminderEmail, planningEventEmail, isEmailConfigured } from "@/lib/email";
+import { getEmailPrefs } from "@/lib/auth";
+import { formatDateTime, formatDate } from "@/lib/utils";
+import { EVENT_TYPES } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   const secret = req.headers.get("authorization")?.replace("Bearer ", "");
@@ -15,7 +17,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Email not configured", sent: 0 });
   }
 
+  const prefs = await getEmailPrefs();
   const now = new Date();
+  const results: Array<{ id: string; status: string; reason?: string; to?: string }> = [];
+
   const dueReminders = await prisma.reminder.findMany({
     where: {
       isCompleted: false,
@@ -26,40 +31,65 @@ export async function GET(req: NextRequest) {
     include: { person: true },
   });
 
-  const results = [];
-
   for (const reminder of dueReminders) {
     if (!reminder.person?.email) {
       results.push({ id: reminder.id, status: "skipped", reason: "no_email" });
       continue;
     }
-
     const template = reminderEmail({
       recipientName: reminder.person.name,
       title: reminder.title,
       message: reminder.message ?? undefined,
       dueDate: formatDateTime(reminder.dueDate),
     });
-
-    const result = await sendEmail({
-      to: reminder.person.email,
-      ...template,
-    });
-
+    const result = await sendEmail({ to: reminder.person.email, ...template });
     if (result.success) {
-      await prisma.reminder.update({
-        where: { id: reminder.id },
-        data: { isSent: true },
-      });
+      await prisma.reminder.update({ where: { id: reminder.id }, data: { isSent: true } });
       results.push({ id: reminder.id, status: "sent", to: reminder.person.email });
     } else {
       results.push({ id: reminder.id, status: "failed", reason: result.reason });
     }
   }
 
+  if (prefs.emailOnPlanning && prefs.ownerEmail) {
+    const reminderDays = prefs.planningReminderDays ?? 7;
+    const targetDate = new Date(now);
+    targetDate.setDate(targetDate.getDate() + reminderDays);
+    const dayStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const dayEnd = new Date(dayStart);
+    dayEnd.setHours(23, 59, 59);
+
+    const upcomingEvents = await prisma.academicEvent.findMany({
+      where: {
+        remindEmail: true,
+        reminderSent: false,
+        startDate: { gte: dayStart, lte: dayEnd },
+        status: { notIn: ["COMPLETED", "CANCELLED"] },
+      },
+    });
+
+    for (const ev of upcomingEvents) {
+      const typeLabel = EVENT_TYPES.find((t) => t.value === ev.type)?.label ?? ev.type;
+      const template = planningEventEmail({
+        title: ev.title,
+        type: typeLabel,
+        startDate: formatDate(ev.startDate),
+        endDate: ev.endDate ? formatDate(ev.endDate) : undefined,
+        location: ev.location ?? undefined,
+        isReminder: true,
+        daysUntil: reminderDays,
+      });
+      const result = await sendEmail({ to: prefs.ownerEmail, ...template });
+      if (result.success) {
+        await prisma.academicEvent.update({ where: { id: ev.id }, data: { reminderSent: true } });
+        results.push({ id: ev.id, status: "planning_sent", to: prefs.ownerEmail });
+      }
+    }
+  }
+
   return NextResponse.json({
-    processed: dueReminders.length,
-    sent: results.filter((r) => r.status === "sent").length,
+    processed: results.length,
+    sent: results.filter((r) => r.status === "sent" || r.status === "planning_sent").length,
     results,
   });
 }

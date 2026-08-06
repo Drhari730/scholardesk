@@ -201,12 +201,18 @@ model Reminder {
 }
 
 model AppSettings {
-  id          String   @id @default("default")
-  userName    String   @default("Dr. Hari Prakash")
-  userTitle   String   @default("Assistant Professor, Public Health")
-  institution String?
-  email       String?
-  updatedAt   DateTime @updatedAt
+  id                   String   @id @default("default")
+  userName             String   @default("Dr. Hari Prakash")
+  userTitle            String   @default("Assistant Professor, Public Health")
+  institution          String?
+  email                String?
+  passwordHash         String?
+  emailOnTask          Boolean  @default(true)
+  emailOnPublication   Boolean  @default(true)
+  emailOnPlanning      Boolean  @default(true)
+  emailOnProject       Boolean  @default(true)
+  planningReminderDays Int      @default(7)
+  updatedAt            DateTime @updatedAt
 }
 
 model AcademicEvent {
@@ -229,6 +235,9 @@ model AcademicEvent {
   honorarium        String?
   invitationDate    DateTime?
   notes             String?
+  checklist         String?
+  remindEmail       Boolean   @default(true)
+  reminderSent      Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }

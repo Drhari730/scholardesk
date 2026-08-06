@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendEmail, planningEventEmail } from "@/lib/email";
+import { getEmailPrefs } from "@/lib/auth";
+import { buildDefaultChecklist, serializeChecklist } from "@/lib/checklists";
+import { detectConflicts } from "@/lib/conflicts";
+import { formatDate } from "@/lib/utils";
+import { EVENT_TYPES } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   const month = req.nextUrl.searchParams.get("month");
@@ -28,13 +34,21 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
+  const startDate = new Date(body.startDate);
+  const endDate = body.endDate ? new Date(body.endDate) : null;
+  const checklist = body.checklist
+    ? JSON.stringify(body.checklist)
+    : serializeChecklist(buildDefaultChecklist(body.type || "CONFERENCE"));
+
+  const conflicts = await detectConflicts(startDate, endDate ?? startDate);
+
   const event = await prisma.academicEvent.create({
     data: {
       title: body.title,
       type: body.type,
       status: body.status || "PLANNED",
-      startDate: new Date(body.startDate),
-      endDate: body.endDate ? new Date(body.endDate) : null,
+      startDate,
+      endDate,
       location: body.location,
       venue: body.venue,
       organizer: body.organizer,
@@ -48,7 +62,24 @@ export async function POST(req: NextRequest) {
       honorarium: body.honorarium,
       invitationDate: body.invitationDate ? new Date(body.invitationDate) : null,
       notes: body.notes,
+      checklist,
+      remindEmail: body.remindEmail !== false,
     },
   });
-  return NextResponse.json(event, { status: 201 });
+
+  const prefs = await getEmailPrefs();
+  if (prefs.emailOnPlanning && prefs.ownerEmail && body.sendEmail !== false) {
+    const typeLabel = EVENT_TYPES.find((t) => t.value === event.type)?.label ?? event.type;
+    const template = planningEventEmail({
+      title: event.title,
+      type: typeLabel,
+      startDate: formatDate(event.startDate),
+      endDate: event.endDate ? formatDate(event.endDate) : undefined,
+      location: event.location ?? undefined,
+      prepNotes: event.prepNotes ?? undefined,
+    });
+    await sendEmail({ to: prefs.ownerEmail, ...template });
+  }
+
+  return NextResponse.json({ ...event, conflicts }, { status: 201 });
 }

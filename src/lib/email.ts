@@ -276,3 +276,36 @@ export function projectPhaseUpdateEmail(params: {
     html: baseTemplate(content),
   };
 }
+
+export function planningEventEmail(params: {
+  title: string;
+  type: string;
+  startDate: string;
+  endDate?: string;
+  location?: string;
+  prepNotes?: string;
+  isReminder?: boolean;
+  daysUntil?: number;
+}) {
+  const heading = params.isReminder
+    ? `Upcoming in ${params.daysUntil} day${params.daysUntil === 1 ? "" : "s"}`
+    : "New event added to your planner";
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>Dr. Hari Prakash</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">${heading}:</p>
+    <div style="background:#eef2ff;border-left:4px solid #6366f1;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:#312e81;font-size:18px;font-weight:600;">${params.title}</p>
+      <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Type: ${params.type.replace(/_/g, " ")}</p>
+      <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Date: ${params.startDate}${params.endDate ? ` – ${params.endDate}` : ""}</p>
+      ${params.location ? `<p style="margin:0 0 8px;color:#64748b;font-size:14px;">Location: ${params.location}</p>` : ""}
+      ${params.prepNotes ? `<p style="margin:8px 0 0;color:#475569;font-size:14px;">Prep: ${params.prepNotes}</p>` : ""}
+    </div>
+    <p style="margin:0;color:#475569;font-size:14px;">Open ScholarDesk → Month Planning to review your checklist and preparation notes.</p>
+  `;
+  return {
+    subject: params.isReminder
+      ? `Reminder: ${params.title} in ${params.daysUntil} days`
+      : `Planned: ${params.title}`,
+    html: baseTemplate(content),
+  };
+}

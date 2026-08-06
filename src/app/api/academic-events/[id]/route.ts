@@ -28,6 +28,8 @@ export async function PATCH(
       honorarium: body.honorarium,
       invitationDate: body.invitationDate ? new Date(body.invitationDate) : undefined,
       notes: body.notes,
+      checklist: body.checklist ? JSON.stringify(body.checklist) : undefined,
+      remindEmail: body.remindEmail,
     },
   });
   return NextResponse.json(event);

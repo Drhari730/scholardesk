@@ -12,6 +12,8 @@ import {
   CalendarDays,
   MapPin,
   X,
+  AlertTriangle,
+  Check,
 } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,13 @@ import { PageTransition, ScrollReveal } from "@/components/ui/motion";
 import { useFetch, apiPost, apiPatch, apiDelete } from "@/lib/hooks";
 import { formatDate } from "@/lib/utils";
 import { EVENT_TYPES, EVENT_STATUSES, getStatusMeta } from "@/lib/constants";
+import { parseChecklist, type ChecklistItem } from "@/lib/checklists";
+
+interface ScheduleConflict {
+  type: string;
+  message: string;
+  severity: string;
+}
 
 interface AcademicEvent {
   id: string;
@@ -43,6 +52,7 @@ interface AcademicEvent {
   presentationTitle: string | null;
   honorarium: string | null;
   notes: string | null;
+  checklist: string | null;
 }
 
 const TYPE_ICONS: Record<string, typeof Plane> = {
@@ -66,11 +76,13 @@ export default function PlanningPage() {
   const [showForm, setShowForm] = useState(false);
   const [defaultType, setDefaultType] = useState("CONFERENCE");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [createConflicts, setCreateConflicts] = useState<ScheduleConflict[]>([]);
 
   const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
   const { data: events, loading, refetch } = useFetch<AcademicEvent[]>(
     `/api/academic-events?month=${monthKey}${filter !== "ALL" ? `&type=${filter}` : ""}`
   );
+  const { data: conflicts } = useFetch<ScheduleConflict[]>("/api/conflicts");
 
   const calendarDays = useMemo(() => {
     const first = new Date(year, month, 1);
@@ -112,12 +124,26 @@ export default function PlanningPage() {
   async function createEvent(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    await apiPost("/api/academic-events", {
+    const result = await apiPost("/api/academic-events", {
       ...Object.fromEntries(fd),
       startDate: fd.get("startDate") + "T09:00:00",
       endDate: fd.get("endDate") ? fd.get("endDate") + "T18:00:00" : null,
+      sendEmail: fd.get("sendEmail") === "on",
     });
-    setShowForm(false);
+    if (result.conflicts?.length) {
+      setCreateConflicts(result.conflicts);
+    } else {
+      setCreateConflicts([]);
+      setShowForm(false);
+    }
+    refetch();
+  }
+
+  async function toggleChecklistItem(eventId: string, items: ChecklistItem[], itemId: string) {
+    const updated = items.map((item) =>
+      item.id === itemId ? { ...item, done: !item.done } : item
+    );
+    await apiPatch(`/api/academic-events/${eventId}`, { checklist: updated });
     refetch();
   }
 
@@ -149,6 +175,24 @@ export default function PlanningPage() {
           </div>
         }
       />
+
+      {conflicts && conflicts.length > 0 && (
+        <div className="mb-6 space-y-2">
+          {conflicts.map((c, i) => (
+            <div
+              key={i}
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm ${
+                c.severity === "critical"
+                  ? "border border-red-200 bg-red-50 text-red-800"
+                  : "border border-amber-200 bg-amber-50 text-amber-800"
+              }`}
+            >
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {c.message}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="mb-6 flex flex-wrap gap-2">
         {["ALL", ...EVENT_TYPES.map((t) => t.value)].map((f) => (
@@ -271,6 +315,36 @@ export default function PlanningPage() {
                             <option key={s.value} value={s.value}>{s.label}</option>
                           ))}
                         </Select>
+                        {(() => {
+                          const items = parseChecklist(ev.checklist);
+                          if (!items.length) return null;
+                          const done = items.filter((i) => i.done).length;
+                          return (
+                            <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-2">
+                              <p className="mb-2 text-xs font-medium text-slate-600">
+                                Prep checklist ({done}/{items.length})
+                              </p>
+                              <div className="space-y-1">
+                                {items.map((item) => (
+                                  <label key={item.id} className="flex items-center gap-2 text-xs">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleChecklistItem(ev.id, items, item.id)}
+                                      className={`flex h-4 w-4 items-center justify-center rounded border ${
+                                        item.done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300"
+                                      }`}
+                                    >
+                                      {item.done && <Check className="h-3 w-3" />}
+                                    </button>
+                                    <span className={item.done ? "text-slate-400 line-through" : "text-slate-700"}>
+                                      {item.label}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </ScrollReveal>
                   );
@@ -423,6 +497,21 @@ export default function PlanningPage() {
               <Label>Description / Notes</Label>
               <Textarea name="notes" className="mt-1" />
             </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="sendEmail" defaultChecked />
+              Email me about this event
+            </label>
+            {createConflicts.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                <p className="font-medium">Schedule conflicts detected:</p>
+                <ul className="mt-1 list-inside list-disc">
+                  {createConflicts.map((c, i) => <li key={i}>{c.message}</li>)}
+                </ul>
+                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => { setShowForm(false); setCreateConflicts([]); }}>
+                  Save anyway & close
+                </Button>
+              </div>
+            )}
             <Button type="submit" className="w-full">Save Event</Button>
           </form>
         </DialogContent>

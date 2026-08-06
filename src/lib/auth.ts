@@ -1,5 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { timingSafeEqual } from "crypto";
+import { prisma } from "@/lib/prisma";
+import { verifyPasswordHash } from "@/lib/password";
 
 const COOKIE_NAME = "scholardesk_session";
 const SESSION_DURATION = "7d";
@@ -34,14 +36,19 @@ export async function verifySessionToken(token: string) {
   }
 }
 
-export function verifyPassword(input: string): boolean {
+export async function verifyPassword(input: string): Promise<boolean> {
+  const settings = await prisma.appSettings.findUnique({ where: { id: "default" } });
+
+  if (settings?.passwordHash) {
+    return verifyPasswordHash(input, settings.passwordHash);
+  }
+
   const expected = process.env.ADMIN_PASSWORD;
   if (!expected) return false;
 
   const a = Buffer.from(input);
   const b = Buffer.from(expected);
   if (a.length !== b.length) return false;
-
   return timingSafeEqual(a, b);
 }
 
@@ -62,5 +69,22 @@ export function sessionCookieOptions(token: string) {
     sameSite: "lax" as const,
     maxAge: 60 * 60 * 24 * 7,
     path: "/",
+  };
+}
+
+export async function getOwnerEmail(): Promise<string | null> {
+  const settings = await prisma.appSettings.findUnique({ where: { id: "default" } });
+  return settings?.email ?? process.env.OWNER_EMAIL ?? null;
+}
+
+export async function getEmailPrefs() {
+  const settings = await prisma.appSettings.findUnique({ where: { id: "default" } });
+  return {
+    emailOnTask: settings?.emailOnTask ?? true,
+    emailOnPublication: settings?.emailOnPublication ?? true,
+    emailOnPlanning: settings?.emailOnPlanning ?? true,
+    emailOnProject: settings?.emailOnProject ?? true,
+    planningReminderDays: settings?.planningReminderDays ?? 7,
+    ownerEmail: settings?.email ?? null,
   };
 }

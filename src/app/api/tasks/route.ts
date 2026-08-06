@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, taskAssignedEmail } from "@/lib/email";
+import { getEmailPrefs } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
@@ -44,7 +45,8 @@ export async function POST(req: NextRequest) {
   }
 
   let emailResult = null;
-  if (shouldEmail && task.assignee?.email) {
+  const prefs = await getEmailPrefs();
+  if (shouldEmail && task.assignee?.email && prefs.emailOnTask) {
     const template = taskAssignedEmail({
       assigneeName: task.assignee.name,
       taskTitle: task.title,

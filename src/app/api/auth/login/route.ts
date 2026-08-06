@@ -10,14 +10,7 @@ import {
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  if (!process.env.ADMIN_PASSWORD) {
-    return NextResponse.json(
-      { error: "ADMIN_PASSWORD not configured on server" },
-      { status: 503 }
-    );
-  }
-
-  if (!verifyPassword(body.password ?? "")) {
+  if (!(await verifyPassword(body.password ?? ""))) {
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   }
 

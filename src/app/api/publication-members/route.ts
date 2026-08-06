@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, publicationTeamEmail } from "@/lib/email";
+import { getEmailPrefs } from "@/lib/auth";
 import { PUBLICATION_MEMBER_ROLES, PUBLICATION_STATUSES } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
@@ -15,7 +16,8 @@ export async function POST(req: NextRequest) {
   });
 
   let emailSent = false;
-  if (body.sendEmail !== false && member.person.email) {
+  const prefs = await getEmailPrefs();
+  if (body.sendEmail !== false && member.person.email && prefs.emailOnPublication) {
     const roleLabel =
       PUBLICATION_MEMBER_ROLES.find((r) => r.value === member.role)?.label ?? member.role;
     const statusLabel =
