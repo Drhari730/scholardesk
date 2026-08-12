@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { DonutChartCard, PieChartCard } from "@/components/charts/chart-cards";
+import { MessagesInboxCard } from "@/components/messages-inbox-card";
 import { useFetch } from "@/lib/hooks";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { getDailyQuote, getGreeting, formatWelcomeDate } from "@/lib/quotes";
@@ -222,6 +223,8 @@ export default function DashboardPage() {
           </div>
         </FadeIn>
       )}
+
+      <MessagesInboxCard />
 
       <StaggerContainer className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StaggerItem>

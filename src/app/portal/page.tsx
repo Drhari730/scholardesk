@@ -6,7 +6,8 @@ import { LogoMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, BookOpen, FlaskConical, CheckCircle2, Paperclip, Download, Loader2, Sparkles, Clock, CalendarDays } from "lucide-react";
+import { Input, Label, Textarea } from "@/components/ui/input";
+import { LogOut, BookOpen, FlaskConical, CheckCircle2, Paperclip, Download, Loader2, Sparkles, Clock, CalendarDays, Send, MessageSquare, CheckCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getTeamPortalQuote, formatPortalDateTime, getTeamGreeting } from "@/lib/quotes";
 import { TASK_STATUSES, PUBLICATION_STATUSES, PORTAL_TASK_STATUSES, getStatusMeta } from "@/lib/constants";
@@ -22,7 +23,7 @@ type PortalTask = {
 };
 
 interface PortalData {
-  person: { name: string; email: string | null; role: string };
+  person: { id: string; name: string; email: string | null; role: string };
   tasks: PortalTask[];
   publications: Array<{ id: string; title: string; status: string; role: string; journal: string | null; attachments: PortalAttachment[] }>;
   projects: Array<{ id: string; title: string; status: string; role: string; researchPhase: string; attachments: PortalAttachment[] }>;
@@ -41,6 +42,10 @@ export default function PortalPage() {
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [taskMessage, setTaskMessage] = useState("");
   const [now, setNow] = useState(() => new Date());
+  const [msgSubject, setMsgSubject] = useState("");
+  const [msgBody, setMsgBody] = useState("");
+  const [sendingMsg, setSendingMsg] = useState(false);
+  const [msgStatus, setMsgStatus] = useState<"idle" | "sent" | "error">("idle");
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -100,6 +105,29 @@ export default function PortalPage() {
     }
   }
 
+  async function sendMessage(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!msgBody.trim() || sendingMsg) return;
+    setSendingMsg(true);
+    setMsgStatus("idle");
+    try {
+      const res = await fetch("/api/portal/message", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: msgSubject, body: msgBody }),
+      });
+      if (!res.ok) throw new Error("failed");
+      setMsgStatus("sent");
+      setMsgSubject("");
+      setMsgBody("");
+    } catch {
+      setMsgStatus("error");
+    } finally {
+      setSendingMsg(false);
+    }
+  }
+
   async function logout() {
     await fetch("/api/auth/portal", { method: "DELETE", credentials: "include" });
     router.push("/portal/login");
@@ -118,7 +146,7 @@ export default function PortalPage() {
     return <div className="flex min-h-screen items-center justify-center bg-[#f8f6f2]">Loading…</div>;
   }
 
-  const quote = getTeamPortalQuote(now);
+  const quote = getTeamPortalQuote(now, data.person.id);
   const { date: todayDate, time: todayTime } = formatPortalDateTime(now);
   const pendingTasks = data.tasks.length;
 
@@ -316,6 +344,71 @@ export default function PortalPage() {
               ))}
             </div>
           )}
+        </section>
+
+        <section>
+          <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-slate-800">
+            <MessageSquare className="h-5 w-5 text-teal-600" /> Message Dr. Hari Prakash
+          </h2>
+          <p className="mb-3 text-xs text-slate-500">
+            Have a question, an update, or a request? Type it below — it goes straight to Dr. Hari&apos;s
+            dashboard and email.
+          </p>
+          <Card>
+            <CardContent className="p-4">
+              {msgStatus === "sent" ? (
+                <div className="flex flex-col items-center gap-3 py-6 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+                    <CheckCircle className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-800">Message sent to Dr. Hari Prakash</p>
+                  <p className="text-xs text-slate-500">He will see it on his dashboard and by email.</p>
+                  <Button variant="outline" size="sm" onClick={() => setMsgStatus("idle")}>
+                    Send another message
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={sendMessage} className="space-y-3">
+                  <div>
+                    <Label>Subject (optional)</Label>
+                    <Input
+                      value={msgSubject}
+                      onChange={(e) => setMsgSubject(e.target.value)}
+                      placeholder="e.g. Update on my data collection"
+                      className="mt-1"
+                      maxLength={200}
+                    />
+                  </div>
+                  <div>
+                    <Label>Your message</Label>
+                    <Textarea
+                      value={msgBody}
+                      onChange={(e) => setMsgBody(e.target.value)}
+                      required
+                      rows={4}
+                      placeholder="Type your message to Dr. Hari Prakash…"
+                      className="mt-1"
+                      maxLength={5000}
+                    />
+                  </div>
+                  {msgStatus === "error" && (
+                    <p className="text-xs text-red-600">Could not send — please try again.</p>
+                  )}
+                  <Button type="submit" disabled={sendingMsg || !msgBody.trim()} className="gap-2">
+                    {sendingMsg ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" /> Send Message
+                      </>
+                    )}
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
         </section>
       </main>
     </div>

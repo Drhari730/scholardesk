@@ -24,6 +24,7 @@ model Person {
   publicationMembers PublicationMember[]
   tasks          Task[]
   reminders      Reminder[]
+  portalMessages PortalMessage[]
 }
 
 model ResearchProject {
@@ -305,4 +306,37 @@ model FileAttachment {
   createdAt  DateTime @default(now())
 
   @@index([entityType, entityId])
+}
+
+/** A message sent by a team member / student from the portal to Dr. Hari */
+model PortalMessage {
+  id        String   @id @default(cuid())
+  personId  String?
+  fromName  String
+  fromEmail String?
+  fromRole  String?
+  subject   String?
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  person Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  @@index([isRead, createdAt])
+}
+
+/** Dr. Hari's private personal projects — not linked to research/teaching */
+model PersonalProject {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  category    String?
+  status      String    @default("ACTIVE")
+  priority    String    @default("MEDIUM")
+  progress    Int       @default(0)
+  dueDate     DateTime?
+  checklist   String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

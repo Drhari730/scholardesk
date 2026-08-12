@@ -50,7 +50,8 @@ export interface SendEmailParams {
   html: string;
   text?: string;
   attachments?: Array<{ filename: string; content: string }>;
-  category?: "team" | "task" | "reminder" | "planning" | "digest" | "backup";
+  category?: "team" | "task" | "reminder" | "planning" | "digest" | "backup" | "message";
+  replyTo?: string;
 }
 
 export async function sendEmail({
@@ -60,13 +61,14 @@ export async function sendEmail({
   text,
   attachments,
   category,
+  replyTo: replyToOverride,
 }: SendEmailParams) {
   if (!resend) {
     console.warn("[email] RESEND_API_KEY not set — skipping email to", to);
     return { success: false, reason: "not_configured" };
   }
 
-  const replyTo = await getReplyToEmail();
+  const replyTo = replyToOverride ?? (await getReplyToEmail());
   const plainText = text ?? htmlToPlainText(html);
 
   try {
@@ -336,6 +338,37 @@ export function teamInstructionEmail(params: {
   `;
   return {
     subject: `Instructions: ${params.projectTitle}`,
+    html: baseTemplate(content),
+  };
+}
+
+export function portalMessageEmail(params: {
+  fromName: string;
+  fromEmail?: string | null;
+  fromRole?: string | null;
+  subject?: string | null;
+  body: string;
+}) {
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Hello <strong>Dr. Hari Prakash</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      You have a new message from a team member via the ScholarDesk portal:
+    </p>
+    <div style="background:#f0fdfa;border-left:4px solid #0d9488;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 4px;color:#0f5c5c;font-size:16px;font-weight:600;">${escapeHtml(params.fromName)}${params.fromRole ? ` · ${escapeHtml(params.fromRole.replace(/_/g, " "))}` : ""}</p>
+      ${params.fromEmail ? `<p style="margin:0 0 12px;color:#64748b;font-size:13px;">${escapeHtml(params.fromEmail)}</p>` : ""}
+      ${params.subject ? `<p style="margin:0 0 8px;color:#334155;font-size:15px;font-weight:600;">${escapeHtml(params.subject)}</p>` : ""}
+      <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;white-space:pre-line;">${escapeHtml(params.body)}</p>
+    </div>
+    <p style="margin:0 0 16px;text-align:center;">
+      <a href="${APP_URL}/messages" style="display:inline-block;background:#0d9488;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;">
+        View in Dashboard
+      </a>
+    </p>
+    ${params.fromEmail ? `<p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">Reply to this email to respond to ${escapeHtml(params.fromName)} directly.</p>` : ""}
+  `;
+  return {
+    subject: `New portal message from ${params.fromName}${params.subject ? `: ${params.subject}` : ""}`,
     html: baseTemplate(content),
   };
 }

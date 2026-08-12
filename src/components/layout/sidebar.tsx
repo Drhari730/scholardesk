@@ -20,9 +20,11 @@ import {
   ClipboardList,
   LogOut,
   Settings,
+  MessageSquare,
+  Target,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +39,9 @@ const navItems = [
   { href: "/question-papers", label: "Question Papers", icon: FileQuestion },
   { href: "/calendar", label: "Google Calendar", icon: Calendar },
   { href: "/people", label: "People", icon: Users },
+  { href: "/messages", label: "Messages", icon: MessageSquare },
   { href: "/reminders", label: "Reminders", icon: Bell },
+  { href: "/personal-projects", label: "Personal Projects", icon: Target },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -45,6 +49,20 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/messages", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active && d) setUnread(d.unread ?? 0);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
 
   async function logout() {
     await fetch("/api/auth/login", { method: "DELETE", credentials: "include" });
@@ -94,6 +112,11 @@ export function Sidebar() {
                 <Icon className="relative h-4 w-4 shrink-0" />
               </AnimatedIcon>
               <span className="relative">{item.label}</span>
+              {item.href === "/messages" && unread > 0 && (
+                <span className="relative ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-semibold text-teal-950">
+                  {unread}
+                </span>
+              )}
             </Link>
           );
         })}
