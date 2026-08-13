@@ -337,6 +337,9 @@ model PersonalProject {
   status      String    @default("ACTIVE")
   priority    String    @default("MEDIUM")
   progress    Int       @default(0)
+  kind        String    @default("GENERAL")
+  stage       String?
+  journal     String?
   dueDate     DateTime?
   checklist   String?
   notes       String?

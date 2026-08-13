@@ -11,6 +11,7 @@ import { DialogRoot, DialogTrigger, DialogContent } from "@/components/ui/dialog
 import { PageTransition } from "@/components/ui/motion";
 import { useFetch, apiPost, apiPatch, apiDelete } from "@/lib/hooks";
 import { formatDate } from "@/lib/utils";
+import { MANUSCRIPT_STAGES } from "@/lib/constants";
 
 const STATUSES = [
   { value: "ACTIVE", label: "Active", color: "bg-emerald-100 text-emerald-700" },
@@ -36,6 +37,9 @@ interface PersonalProject {
   status: string;
   priority: string;
   progress: number;
+  kind: string;
+  stage: string | null;
+  journal: string | null;
   dueDate: string | null;
   checklist: string | null;
   notes: string | null;
@@ -74,6 +78,7 @@ export default function PersonalProjectsPage() {
   const [showTeam, setShowTeam] = useState(false);
   const [filter, setFilter] = useState<"all" | "ACTIVE" | "ON_HOLD" | "COMPLETED" | "ARCHIVED">("all");
   const [author, setAuthor] = useState<"all" | "mine" | "team">("all");
+  const [newKind, setNewKind] = useState<"MANUSCRIPT" | "GENERAL">("MANUSCRIPT");
   const [newItem, setNewItem] = useState<Record<string, string>>({});
 
   async function toggleMember(personId: string, member: boolean) {
@@ -101,9 +106,13 @@ export default function PersonalProjectsPage() {
   }
 
   async function updateChecklist(p: PersonalProject, items: ChecklistItem[]) {
-    const done = items.filter((i) => i.done).length;
-    const progress = items.length ? Math.round((done / items.length) * 100) : p.progress;
-    await patch(p.id, { checklist: JSON.stringify(items), progress });
+    const body: Record<string, unknown> = { checklist: JSON.stringify(items) };
+    // Manuscript progress is driven by stage, not the checklist
+    if (p.kind !== "MANUSCRIPT") {
+      const done = items.filter((i) => i.done).length;
+      body.progress = items.length ? Math.round((done / items.length) * 100) : p.progress;
+    }
+    await patch(p.id, body);
   }
 
   function toggleItem(p: PersonalProject, idx: number) {
@@ -204,17 +213,50 @@ export default function PersonalProjectsPage() {
             <DialogContent title="New Personal Project">
               <form onSubmit={createProject} className="space-y-4">
                 <div>
+                  <Label>Type</Label>
+                  <Select
+                    name="kind"
+                    value={newKind}
+                    onChange={(e) => setNewKind(e.target.value as "MANUSCRIPT" | "GENERAL")}
+                    className="mt-1"
+                  >
+                    <option value="MANUSCRIPT">Manuscript / Paper</option>
+                    <option value="GENERAL">General project</option>
+                  </Select>
+                </div>
+                <div>
                   <Label>Title</Label>
-                  <Input name="title" required className="mt-1" placeholder="e.g. Learn Spanish" />
+                  <Input
+                    name="title"
+                    required
+                    className="mt-1"
+                    placeholder={newKind === "MANUSCRIPT" ? "Manuscript title" : "e.g. Learn Spanish"}
+                  />
                 </div>
                 <div>
                   <Label>Description</Label>
                   <Textarea name="description" className="mt-1" rows={2} />
                 </div>
+                {newKind === "MANUSCRIPT" && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Target journal</Label>
+                      <Input name="journal" className="mt-1" placeholder="e.g. BMJ Global Health" />
+                    </div>
+                    <div>
+                      <Label>Stage</Label>
+                      <Select name="stage" className="mt-1" defaultValue="IDEA">
+                        {MANUSCRIPT_STAGES.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Category</Label>
-                    <Input name="category" className="mt-1" placeholder="Health, Finance…" />
+                    <Label>{newKind === "MANUSCRIPT" ? "Field / area" : "Category"}</Label>
+                    <Input name="category" className="mt-1" placeholder={newKind === "MANUSCRIPT" ? "e.g. Epidemiology" : "Health, Finance…"} />
                   </div>
                   <div>
                     <Label>Due date</Label>
@@ -303,6 +345,9 @@ export default function PersonalProjectsPage() {
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900">{p.title}</p>
                       {p.category && <p className="text-xs text-teal-600">{p.category}</p>}
+                      {p.kind === "MANUSCRIPT" && p.journal && (
+                        <p className="truncate text-xs text-slate-500">Journal: {p.journal}</p>
+                      )}
                     </div>
                     <button
                       onClick={() => remove(p.id)}
@@ -325,6 +370,11 @@ export default function PersonalProjectsPage() {
                     ) : (
                       <Badge className="bg-slate-100 text-slate-500">You</Badge>
                     )}
+                    {p.kind === "MANUSCRIPT" && p.stage && (
+                      <Badge className={meta(MANUSCRIPT_STAGES, p.stage).color}>
+                        {meta(MANUSCRIPT_STAGES, p.stage).label}
+                      </Badge>
+                    )}
                     {p.dueDate && (
                       <span
                         className={`flex items-center gap-1 text-xs ${
@@ -336,20 +386,46 @@ export default function PersonalProjectsPage() {
                     )}
                   </div>
 
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
-                      <span>Progress</span>
-                      <span>{p.progress}%</span>
+                  {p.kind === "MANUSCRIPT" ? (
+                    <div className="space-y-2">
+                      <div>
+                        <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
+                          <span>Manuscript progress</span>
+                          <span>{p.progress}%</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className="h-full rounded-full bg-teal-600 transition-all"
+                            style={{ width: `${p.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                      <Select
+                        value={p.stage ?? "IDEA"}
+                        onChange={(e) => patch(p.id, { stage: e.target.value })}
+                        className="h-8 text-xs"
+                      >
+                        {MANUSCRIPT_STAGES.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                      </Select>
                     </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={p.progress}
-                      onChange={(e) => patch(p.id, { progress: Number(e.target.value) })}
-                      className="h-2 w-full cursor-pointer accent-teal-600"
-                    />
-                  </div>
+                  ) : (
+                    <div>
+                      <div className="mb-1 flex items-center justify-between text-xs text-slate-500">
+                        <span>Progress</span>
+                        <span>{p.progress}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={p.progress}
+                        onChange={(e) => patch(p.id, { progress: Number(e.target.value) })}
+                        className="h-2 w-full cursor-pointer accent-teal-600"
+                      />
+                    </div>
+                  )}
 
                   {items.length > 0 && (
                     <div className="space-y-1.5">

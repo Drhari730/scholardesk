@@ -71,6 +71,27 @@ export const PRIORITIES = [
   { value: "URGENT", label: "Urgent", color: "bg-red-100 text-red-600" },
 ] as const;
 
+/** Manuscript writing → submission → decision pipeline (drives progress bar). */
+export const MANUSCRIPT_STAGES = [
+  { value: "IDEA", label: "Idea / Concept", progress: 5, color: "bg-violet-100 text-violet-700" },
+  { value: "LIT_REVIEW", label: "Literature Review", progress: 15, color: "bg-violet-100 text-violet-700" },
+  { value: "DRAFTING", label: "Drafting", progress: 30, color: "bg-blue-100 text-blue-700" },
+  { value: "INTERNAL_REVIEW", label: "Internal / Co-author Review", progress: 45, color: "bg-blue-100 text-blue-700" },
+  { value: "READY", label: "Ready to Submit", progress: 55, color: "bg-amber-100 text-amber-700" },
+  { value: "SUBMITTED", label: "Submitted to Journal", progress: 65, color: "bg-amber-100 text-amber-700" },
+  { value: "UNDER_REVIEW", label: "Under Review", progress: 75, color: "bg-amber-100 text-amber-700" },
+  { value: "REVISION", label: "Revision Requested", progress: 82, color: "bg-orange-100 text-orange-700" },
+  { value: "RESUBMITTED", label: "Resubmitted", progress: 90, color: "bg-indigo-100 text-indigo-700" },
+  { value: "ACCEPTED", label: "Accepted", progress: 96, color: "bg-emerald-100 text-emerald-700" },
+  { value: "PUBLISHED", label: "Published", progress: 100, color: "bg-teal-100 text-teal-700" },
+  { value: "REJECTED", label: "Rejected — revise & retarget", progress: 40, color: "bg-red-100 text-red-700" },
+] as const;
+
+/** Progress % implied by a manuscript stage (0 if unknown). */
+export function manuscriptProgress(stage: string | null | undefined): number {
+  return MANUSCRIPT_STAGES.find((s) => s.value === stage)?.progress ?? 0;
+}
+
 export const RESEARCH_PHASES = [
   { value: "PROTOCOL_DEVELOPMENT", label: "Protocol Development", color: "bg-violet-100 text-violet-700" },
   { value: "ETHICS_APPROVAL", label: "Ethics / IEC Approval", color: "bg-purple-100 text-purple-700" },
