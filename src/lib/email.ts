@@ -500,6 +500,38 @@ export function personalProjectAccessEmail(params: {
   };
 }
 
+export function portalMovedEmail(params: {
+  name: string;
+  magicLoginUrl: string;
+  portalUrl: string;
+  newUrl: string;
+  supervisorName?: string;
+}) {
+  const supervisor = params.supervisorName ?? "Dr. Hari Prakash";
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Hi <strong>${escapeHtml(params.name)}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      Your <strong>ScholarDesk Team Portal</strong> has a new home. Please use this address from now on:
+    </p>
+    <div style="background:#f0fdfa;border-left:4px solid #0d9488;border-radius:8px;padding:16px;margin-bottom:24px;text-align:center;">
+      <a href="${params.portalUrl}" style="color:#0f5c5c;font-size:16px;font-weight:600;text-decoration:none;">${escapeHtml(params.newUrl)}</a>
+    </div>
+    <p style="margin:0 0 24px;text-align:center;">
+      <a href="${params.magicLoginUrl}" style="display:inline-block;background:#0d9488;color:#ffffff;text-decoration:none;padding:16px 32px;border-radius:12px;font-size:16px;font-weight:600;">
+        Click to Sign In
+      </a>
+    </p>
+    <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">
+      This one-click link is valid for 90 days. <strong>Your existing PIN still works</strong> — you can also sign in
+      at ${escapeHtml(params.newUrl)} with your email and PIN. Reply to this email if you need help. — ${supervisor}
+    </p>
+  `;
+  return {
+    subject: `Your ScholarDesk portal has moved — new sign-in link`,
+    html: baseTemplate(content),
+  };
+}
+
 export function projectCreatedEmail(params: {
   memberName: string;
   projectTitle: string;

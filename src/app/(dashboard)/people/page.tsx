@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Mail, Phone } from "lucide-react";
+import { Plus, Mail, Phone, Send, Loader2 } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +35,39 @@ export default function PeoplePage() {
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [portalMsg, setPortalMsg] = useState<Record<string, string>>({});
   const [portalLoading, setPortalLoading] = useState<Record<string, boolean>>({});
+  const [bulkMsg, setBulkMsg] = useState("");
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  async function emailAllNewLogin() {
+    if (
+      !confirm(
+        "Email every portal member a fresh one-click sign-in link for the current site? Their PIN will NOT change."
+      )
+    )
+      return;
+    setBulkLoading(true);
+    setBulkMsg("");
+    try {
+      const res = await fetch("/api/people/portal/resend-all", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBulkMsg(data.error ?? "Could not send.");
+        return;
+      }
+      setBulkMsg(
+        `Sent to ${data.sent} of ${data.total} portal members${
+          data.failed?.length ? ` — ${data.failed.length} failed` : ""
+        }.`
+      );
+    } catch {
+      setBulkMsg("Could not send — please try again.");
+    } finally {
+      setBulkLoading(false);
+    }
+  }
 
   async function createPerson(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -99,6 +132,11 @@ export default function PeoplePage() {
         title="People & Collaborators"
         description="Add team members and send them portal access with one click."
         action={
+          <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={emailAllNewLogin} disabled={bulkLoading} className="gap-1">
+            {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Email all: new login
+          </Button>
           <DialogRoot open={showForm} onOpenChange={setShowForm}>
             <DialogTrigger asChild>
               <Button>
@@ -149,8 +187,15 @@ export default function PeoplePage() {
               </form>
             </DialogContent>
           </DialogRoot>
+          </div>
         }
       />
+
+      {bulkMsg && (
+        <div className="mb-6 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+          {bulkMsg}
+        </div>
+      )}
 
       <div className="mb-6 flex flex-wrap gap-2">
         <button
