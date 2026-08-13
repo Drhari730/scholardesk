@@ -49,7 +49,13 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    person: { id: person.id, name: person.name, email: person.email, role: person.role },
+    person: {
+      id: person.id,
+      name: person.name,
+      email: person.email,
+      role: person.role,
+      personalProjectMember: person.personalProjectMember,
+    },
     tasks: person.tasks,
     publications: person.publicationMembers.map((m) => ({
       role: m.role,

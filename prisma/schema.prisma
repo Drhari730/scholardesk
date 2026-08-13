@@ -17,6 +17,7 @@ model Person {
   notes     String?
   portalEnabled Boolean @default(false)
   portalPinHash String?
+  personalProjectMember Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -25,6 +26,7 @@ model Person {
   tasks          Task[]
   reminders      Reminder[]
   portalMessages PortalMessage[]
+  personalProjects PersonalProject[]
 }
 
 model ResearchProject {
@@ -325,7 +327,8 @@ model PortalMessage {
   @@index([isRead, createdAt])
 }
 
-/** Dr. Hari's private personal projects — not linked to research/teaching */
+/** Personal projects. Owner-created (createdById null) are private to the admin;
+ *  team-member-created ones (createdById set) are shared into the admin's folder. */
 model PersonalProject {
   id          String    @id @default(cuid())
   title       String
@@ -337,6 +340,12 @@ model PersonalProject {
   dueDate     DateTime?
   checklist   String?
   notes       String?
+  createdById String?
+  createdByName String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  createdBy Person? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
 }

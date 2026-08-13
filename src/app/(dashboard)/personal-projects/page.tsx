@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Calendar, Check, X } from "lucide-react";
+import { Plus, Trash2, Calendar, Check, X, Users, UserCheck } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,6 +39,18 @@ interface PersonalProject {
   dueDate: string | null;
   checklist: string | null;
   notes: string | null;
+  createdById: string | null;
+  createdByName: string | null;
+  createdBy: { id: string; name: string } | null;
+}
+
+interface TeamPerson {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string;
+  portalEnabled: boolean;
+  personalProjectMember: boolean;
 }
 
 function meta<T extends { value: string; label: string; color: string }>(list: readonly T[], value: string) {
@@ -57,9 +69,17 @@ function parseChecklist(raw: string | null): ChecklistItem[] {
 
 export default function PersonalProjectsPage() {
   const { data: projects, loading, refetch } = useFetch<PersonalProject[]>("/api/personal-projects");
+  const { data: team, refetch: refetchTeam } = useFetch<TeamPerson[]>("/api/personal-projects/team");
   const [showForm, setShowForm] = useState(false);
+  const [showTeam, setShowTeam] = useState(false);
   const [filter, setFilter] = useState<"all" | "ACTIVE" | "ON_HOLD" | "COMPLETED" | "ARCHIVED">("all");
+  const [author, setAuthor] = useState<"all" | "mine" | "team">("all");
   const [newItem, setNewItem] = useState<Record<string, string>>({});
+
+  async function toggleMember(personId: string, member: boolean) {
+    await apiPatch("/api/personal-projects/team", { personId, member });
+    refetchTeam();
+  }
 
   async function createProject(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -108,8 +128,15 @@ export default function PersonalProjectsPage() {
     updateChecklist(p, items);
   }
 
-  const filtered = projects?.filter((p) => (filter === "all" ? true : p.status === filter));
+  const filtered = projects?.filter((p) => {
+    if (filter !== "all" && p.status !== filter) return false;
+    if (author === "mine" && p.createdById) return false;
+    if (author === "team" && !p.createdById) return false;
+    return true;
+  });
   const activeCount = projects?.filter((p) => p.status === "ACTIVE").length ?? 0;
+  const teamCount = team?.filter((t) => t.personalProjectMember).length ?? 0;
+  const sharedCount = projects?.filter((p) => p.createdById).length ?? 0;
 
   return (
     <PageTransition>
@@ -117,6 +144,57 @@ export default function PersonalProjectsPage() {
         title="Personal Projects"
         description="Your private workspace — personal goals and projects, separate from research and teaching."
         action={
+          <div className="flex gap-2">
+          <DialogRoot open={showTeam} onOpenChange={setShowTeam}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Users className="h-4 w-4" /> Team{teamCount > 0 ? ` (${teamCount})` : ""}
+              </Button>
+            </DialogTrigger>
+            <DialogContent title="Personal Projects Team">
+              <p className="mb-3 text-sm text-slate-500">
+                Members you enable can create &amp; share their own personal projects from their portal — those
+                appear here automatically. They need portal access (People → enable portal) to sign in.
+              </p>
+              <div className="max-h-96 space-y-2 overflow-y-auto">
+                {!team?.length ? (
+                  <p className="text-sm text-slate-400">No people yet. Add people in the People section first.</p>
+                ) : (
+                  team.map((person) => (
+                    <div
+                      key={person.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-800">{person.name}</p>
+                        <p className="text-xs text-slate-400">
+                          {person.role.replace(/_/g, " ")}
+                          {person.portalEnabled ? "" : " · no portal access yet"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleMember(person.id, !person.personalProjectMember)}
+                        className={`flex shrink-0 items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                          person.personalProjectMember
+                            ? "bg-teal-600 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {person.personalProjectMember ? (
+                          <>
+                            <UserCheck className="h-3.5 w-3.5" /> Member
+                          </>
+                        ) : (
+                          "Add as member"
+                        )}
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </DialogContent>
+          </DialogRoot>
           <DialogRoot open={showForm} onOpenChange={setShowForm}>
             <DialogTrigger asChild>
               <Button>
@@ -169,6 +247,7 @@ export default function PersonalProjectsPage() {
               </form>
             </DialogContent>
           </DialogRoot>
+          </div>
         }
       />
 
@@ -186,6 +265,22 @@ export default function PersonalProjectsPage() {
           </button>
         ))}
       </div>
+
+      {(sharedCount > 0 || teamCount > 0) && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          {(["all", "mine", "team"] as const).map((a) => (
+            <button
+              key={a}
+              onClick={() => setAuthor(a)}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                author === a ? "bg-slate-800 text-white" : "bg-white text-slate-600"
+              }`}
+            >
+              {a === "all" ? "Everyone" : a === "mine" ? "Only mine" : `Team${sharedCount > 0 ? ` (${sharedCount})` : ""}`}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="skeleton h-64 rounded-2xl" />
@@ -223,6 +318,13 @@ export default function PersonalProjectsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge className={statusMeta.color}>{statusMeta.label}</Badge>
                     <Badge className={prioMeta.color}>{prioMeta.label}</Badge>
+                    {p.createdById ? (
+                      <Badge className="bg-indigo-100 text-indigo-700">
+                        by {p.createdBy?.name ?? p.createdByName ?? "team member"}
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-slate-100 text-slate-500">You</Badge>
+                    )}
                     {p.dueDate && (
                       <span
                         className={`flex items-center gap-1 text-xs ${

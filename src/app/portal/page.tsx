@@ -10,6 +10,7 @@ import { Input, Label, Textarea } from "@/components/ui/input";
 import { LogOut, BookOpen, FlaskConical, CheckCircle2, Paperclip, Download, Loader2, Sparkles, Clock, CalendarDays, Send, MessageSquare, CheckCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getTeamPortalQuote, formatPortalDateTime, getTeamGreeting } from "@/lib/quotes";
+import { PortalPersonalProjects } from "@/components/portal/personal-projects";
 import { TASK_STATUSES, PUBLICATION_STATUSES, PORTAL_TASK_STATUSES, getStatusMeta } from "@/lib/constants";
 
 type PortalAttachment = { id: string; filename: string; size: number; mimeType: string };
@@ -23,7 +24,7 @@ type PortalTask = {
 };
 
 interface PortalData {
-  person: { id: string; name: string; email: string | null; role: string };
+  person: { id: string; name: string; email: string | null; role: string; personalProjectMember?: boolean };
   tasks: PortalTask[];
   publications: Array<{ id: string; title: string; status: string; role: string; journal: string | null; attachments: PortalAttachment[] }>;
   projects: Array<{ id: string; title: string; status: string; role: string; researchPhase: string; attachments: PortalAttachment[] }>;
@@ -345,6 +346,8 @@ export default function PortalPage() {
             </div>
           )}
         </section>
+
+        {data.person.personalProjectMember && <PortalPersonalProjects />}
 
         <section>
           <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-slate-800">
