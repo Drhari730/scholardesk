@@ -16,6 +16,7 @@ import {
   Mic2,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { PageHeader, StatCard } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +109,12 @@ export default function DashboardPage() {
   const { data, loading } = useFetch<DashboardData>("/api/dashboard");
   const { data: portfolio } = useFetch<PortfolioData>("/api/portfolio");
   const { data: conflicts } = useFetch<Array<{ message: string; severity: string }>>("/api/conflicts");
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   if (loading || !data) {
     return (
@@ -148,8 +155,15 @@ export default function DashboardPage() {
 
   const liveTools = portfolio?.projects.filter((p) => p.status === "live").length ?? 0;
   const quote = getDailyQuote();
-  const greeting = getGreeting();
-  const todayStr = formatWelcomeDate();
+  const greeting = getGreeting(now);
+  const todayStr = formatWelcomeDate(now);
+  const timeStr = now.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
 
   return (
     <PageTransition>
@@ -158,6 +172,7 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-medium uppercase tracking-widest text-amber-300/80">{todayStr}</p>
+              <p className="mt-1 font-mono text-sm tabular-nums text-teal-100/90">{timeStr} IST</p>
               <h1 className="mt-2 font-serif text-2xl font-semibold sm:text-3xl">
                 {greeting}, Dr. Hari Prakash
               </h1>

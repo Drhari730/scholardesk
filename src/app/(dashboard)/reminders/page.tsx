@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Bell, Check, AlertTriangle, Mail } from "lucide-react";
+import { Plus, Bell, Check, AlertTriangle, Mail, Send } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,6 +39,23 @@ export default function RemindersPage() {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState<"all" | "pending" | "overdue" | "done">("pending");
   const [emailConfigured, setEmailConfigured] = useState<boolean | null>(null);
+  const [resendMsg, setResendMsg] = useState("");
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  async function resendReminder(id: string) {
+    setResendingId(id);
+    setResendMsg("");
+    try {
+      const res = await fetch(`/api/reminders/${id}/resend`, { method: "POST", credentials: "include" });
+      const data = await res.json();
+      setResendMsg(res.ok ? `Reminder re-sent to ${data.sentTo}.` : data.error ?? "Could not resend.");
+      refetch();
+    } catch {
+      setResendMsg("Could not resend — please try again.");
+    } finally {
+      setResendingId(null);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/email/status")
@@ -144,6 +161,12 @@ export default function RemindersPage() {
         </div>
       )}
 
+      {resendMsg && (
+        <div className="mb-4 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+          {resendMsg}
+        </div>
+      )}
+
       <div className="mb-6 flex gap-2">
         {(["pending", "overdue", "done", "all"] as const).map((f) => (
           <button
@@ -213,14 +236,28 @@ export default function RemindersPage() {
                       {r.exam && <span>Exam: {r.exam.title}</span>}
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-red-400 shrink-0"
-                    onClick={() => deleteReminder(r.id)}
-                  >
-                    Delete
-                  </Button>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {r.person?.email && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 text-teal-600"
+                        disabled={resendingId === r.id}
+                        onClick={() => resendReminder(r.id)}
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        {resendingId === r.id ? "Sending…" : "Resend"}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-red-400"
+                      onClick={() => deleteReminder(r.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );

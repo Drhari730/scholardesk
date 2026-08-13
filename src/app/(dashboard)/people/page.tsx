@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Mail, Phone, Send, Loader2 } from "lucide-react";
+import { Plus, Mail, Phone, Send, Loader2, MessageSquare } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +37,45 @@ export default function PeoplePage() {
   const [portalLoading, setPortalLoading] = useState<Record<string, boolean>>({});
   const [bulkMsg, setBulkMsg] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [msgTarget, setMsgTarget] = useState<Person | null>(null);
+  const [msgSubject, setMsgSubject] = useState("");
+  const [msgBody, setMsgBody] = useState("");
+  const [msgSending, setMsgSending] = useState(false);
+  const [msgResult, setMsgResult] = useState("");
+
+  function openMessage(person: Person) {
+    setMsgTarget(person);
+    setMsgSubject("");
+    setMsgBody("");
+    setMsgResult("");
+  }
+
+  async function sendDirectMessage(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!msgTarget || !msgBody.trim() || msgSending) return;
+    setMsgSending(true);
+    setMsgResult("");
+    try {
+      const res = await fetch("/api/people/message", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personId: msgTarget.id, subject: msgSubject, body: msgBody }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsgResult(data.error ?? "Could not send.");
+        return;
+      }
+      setMsgResult(`Sent to ${data.sentTo}.`);
+      setMsgSubject("");
+      setMsgBody("");
+    } catch {
+      setMsgResult("Could not send — please try again.");
+    } finally {
+      setMsgSending(false);
+    }
+  }
 
   async function emailAllNewLogin() {
     if (
@@ -274,6 +313,16 @@ export default function PeoplePage() {
                 </div>
 
                 <div className="mt-4 border-t border-slate-100 pt-4">
+                  {person.email && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mb-2 h-8 w-full gap-1 text-xs"
+                      onClick={() => openMessage(person)}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" /> Send Message
+                    </Button>
+                  )}
                   {!person.email ? (
                     <p className="text-xs text-amber-700">Add an email to enable portal access.</p>
                   ) : person.portalEnabled ? (
@@ -318,6 +367,50 @@ export default function PeoplePage() {
           ))}
         </div>
       )}
+
+      <DialogRoot open={!!msgTarget} onOpenChange={(o) => !o && setMsgTarget(null)}>
+        <DialogContent title={msgTarget ? `Message ${msgTarget.name}` : "Message"}>
+          <form onSubmit={sendDirectMessage} className="space-y-4">
+            <p className="text-xs text-slate-500">
+              Sends an email to <strong>{msgTarget?.email}</strong>. They can reply to you directly.
+            </p>
+            <div>
+              <Label>Subject (optional)</Label>
+              <Input
+                value={msgSubject}
+                onChange={(e) => setMsgSubject(e.target.value)}
+                className="mt-1"
+                maxLength={200}
+                placeholder="e.g. Quick update on your task"
+              />
+            </div>
+            <div>
+              <Label>Message</Label>
+              <Textarea
+                value={msgBody}
+                onChange={(e) => setMsgBody(e.target.value)}
+                required
+                rows={5}
+                className="mt-1"
+                maxLength={5000}
+                placeholder="Type your message…"
+              />
+            </div>
+            {msgResult && <p className="text-xs text-teal-700">{msgResult}</p>}
+            <Button type="submit" disabled={msgSending || !msgBody.trim()} className="w-full gap-2">
+              {msgSending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" /> Send Message
+                </>
+              )}
+            </Button>
+          </form>
+        </DialogContent>
+      </DialogRoot>
     </PageTransition>
   );
 }

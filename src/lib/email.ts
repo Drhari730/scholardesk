@@ -50,7 +50,7 @@ export interface SendEmailParams {
   html: string;
   text?: string;
   attachments?: Array<{ filename: string; content: string }>;
-  category?: "team" | "task" | "reminder" | "planning" | "digest" | "backup" | "message";
+  category?: "team" | "task" | "reminder" | "planning" | "digest" | "backup" | "message" | "publication" | "project";
   replyTo?: string;
 }
 
@@ -590,29 +590,136 @@ export function publicationTeamEmail(params: {
   };
 }
 
+const PUB_STATUS_COPY: Record<
+  string,
+  { emoji: string; subject: string; headline: string; border: string; bg: string; heading: string; closing: string }
+> = {
+  SUBMITTED: {
+    emoji: "📨",
+    subject: "Submitted",
+    headline: "The manuscript has been submitted to the journal.",
+    border: "#3b82f6",
+    bg: "#eff6ff",
+    heading: "#1e3a8a",
+    closing: "Now we wait for the editor's initial decision. Fingers crossed!",
+  },
+  UNDER_REVIEW: {
+    emoji: "🔍",
+    subject: "Under Review",
+    headline: "Good news — the manuscript has entered peer review.",
+    border: "#f59e0b",
+    bg: "#fffbeb",
+    heading: "#92400e",
+    closing: "The reviewers are reading our work. We'll share their comments as soon as they arrive.",
+  },
+  REVISION_REQUESTED: {
+    emoji: "✏️",
+    subject: "Revision Requested",
+    headline: "The journal has requested revisions — action needed.",
+    border: "#f97316",
+    bg: "#fff7ed",
+    heading: "#9a3412",
+    closing: "Please review the comments below. Let's turn the revision around promptly and resubmit stronger.",
+  },
+  RESUBMITTED: {
+    emoji: "🔁",
+    subject: "Resubmitted",
+    headline: "The revised manuscript has been resubmitted.",
+    border: "#8b5cf6",
+    bg: "#f5f3ff",
+    heading: "#5b21b6",
+    closing: "Thank you for the revisions. Back to the editor's desk we go.",
+  },
+  ACCEPTED: {
+    emoji: "🎉",
+    subject: "Accepted!",
+    headline: "Congratulations — our manuscript has been ACCEPTED!",
+    border: "#10b981",
+    bg: "#ecfdf5",
+    heading: "#065f46",
+    closing: "Wonderful work by the whole team. 🎊 Enjoy this moment — you earned it. Details on proofs and publication will follow.",
+  },
+  PUBLISHED: {
+    emoji: "🏆",
+    subject: "Published!",
+    headline: "It's official — our work is PUBLISHED!",
+    border: "#0d9488",
+    bg: "#f0fdfa",
+    heading: "#0f5c5c",
+    closing: "Our research is now out in the world and can start making an impact. Congratulations to everyone involved! 🎉",
+  },
+  REJECTED: {
+    emoji: "💪",
+    subject: "Not accepted this time",
+    headline: "This manuscript wasn't accepted this time.",
+    border: "#ef4444",
+    bg: "#fef2f2",
+    heading: "#991b1b",
+    closing: "Every strong paper collects a few rejections. Let's learn from the feedback, regroup, and resubmit to a well-matched journal. Onward.",
+  },
+  DRAFT: {
+    emoji: "📝",
+    subject: "Back to Draft",
+    headline: "The manuscript has been moved back to draft.",
+    border: "#6366f1",
+    bg: "#eef2ff",
+    heading: "#3730a3",
+    closing: "Time to keep polishing. Let's get it submission-ready.",
+  },
+};
+
 export function publicationStatusEmail(params: {
   memberName: string;
   publicationTitle: string;
   oldStatus: string;
   newStatus: string;
+  newStatusValue?: string;
   journal?: string;
   reviewerComments?: string;
 }) {
+  const c = PUB_STATUS_COPY[params.newStatusValue ?? ""] ?? {
+    emoji: "📄",
+    subject: params.newStatus,
+    headline: `The manuscript status is now ${params.newStatus}.`,
+    border: "#0d9488",
+    bg: "#f0fdfa",
+    heading: "#0f5c5c",
+    closing: "Please review and take any required action for your role on this manuscript.",
+  };
   const content = `
-    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${params.memberName}</strong>,</p>
-    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
-      The publication status has been updated:
-    </p>
-    <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:8px;padding:20px;margin-bottom:24px;">
-      <p style="margin:0 0 8px;color:#92400e;font-size:18px;font-weight:600;">${params.publicationTitle}</p>
-      ${params.journal ? `<p style="margin:0 0 8px;color:#64748b;font-size:14px;">Journal: ${params.journal}</p>` : ""}
-      <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Status: <strong>${params.oldStatus}</strong> → <strong>${params.newStatus}</strong></p>
-      ${params.reviewerComments ? `<p style="margin:8px 0 0;color:#475569;font-size:14px;"><strong>Reviewer comments:</strong> ${params.reviewerComments}</p>` : ""}
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${escapeHtml(params.memberName)}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;">${c.emoji} ${c.headline}</p>
+    <div style="background:${c.bg};border-left:4px solid ${c.border};border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:${c.heading};font-size:18px;font-weight:600;">${escapeHtml(params.publicationTitle)}</p>
+      ${params.journal ? `<p style="margin:0 0 8px;color:#64748b;font-size:14px;">Journal: ${escapeHtml(params.journal)}</p>` : ""}
+      <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Status: <strong>${escapeHtml(params.oldStatus)}</strong> → <strong>${escapeHtml(params.newStatus)}</strong></p>
+      ${params.reviewerComments ? `<p style="margin:8px 0 0;color:#475569;font-size:14px;"><strong>Reviewer comments:</strong> ${escapeHtml(params.reviewerComments)}</p>` : ""}
     </div>
-    <p style="margin:0;color:#475569;font-size:14px;">Please review and take any required action for your role on this manuscript.</p>
+    <p style="margin:0;color:#475569;font-size:15px;line-height:1.6;">${c.closing}</p>
   `;
   return {
-    subject: `Publication Update: ${params.publicationTitle} — ${params.newStatus}`,
+    subject: `${c.emoji} ${params.publicationTitle} — ${c.subject}`,
+    html: baseTemplate(content),
+  };
+}
+
+export function directMessageEmail(params: {
+  name: string;
+  subject?: string | null;
+  message: string;
+  supervisorName?: string;
+}) {
+  const supervisor = params.supervisorName ?? "Dr. Hari Prakash";
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${escapeHtml(params.name)}</strong>,</p>
+    ${params.subject ? `<p style="margin:0 0 12px;color:#0f5c5c;font-size:16px;font-weight:600;">${escapeHtml(params.subject)}</p>` : ""}
+    <div style="background:#f8fafc;border-left:4px solid #0d9488;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0;color:#334155;font-size:15px;line-height:1.7;white-space:pre-line;">${escapeHtml(params.message)}</p>
+    </div>
+    <p style="margin:0;color:#64748b;font-size:14px;">— ${supervisor}. You can reply directly to this email.</p>
+  `;
+  return {
+    subject: params.subject ? `${params.subject}` : `A message from ${supervisor}`,
     html: baseTemplate(content),
   };
 }

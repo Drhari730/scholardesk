@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmail, projectPhaseUpdateEmail } from "@/lib/email";
+import { sendEmail, projectPhaseUpdateEmail, getEmailBranding } from "@/lib/email";
+import { getOwnerEmail } from "@/lib/auth";
 import { RESEARCH_PHASES } from "@/lib/constants";
 
 export async function GET(
@@ -64,17 +65,26 @@ export async function PATCH(
     const newLabel =
       RESEARCH_PHASES.find((p) => p.value === body.researchPhase)?.label ?? body.researchPhase;
 
-    for (const m of existing.members) {
-      if (!m.person.email) continue;
-      const template = projectPhaseUpdateEmail({
-        memberName: m.person.name,
+    const buildTemplate = (name: string) =>
+      projectPhaseUpdateEmail({
+        memberName: name,
         projectTitle: project.title,
         oldPhase: oldLabel,
         newPhase: newLabel,
         studyState: project.studyState ?? undefined,
       });
-      const result = await sendEmail({ to: m.person.email, ...template });
+
+    for (const m of existing.members) {
+      if (!m.person.email) continue;
+      const result = await sendEmail({ to: m.person.email, ...buildTemplate(m.person.name), category: "project" });
       if (result.success) emailsSent.push(m.person.email);
+    }
+
+    const ownerEmail = await getOwnerEmail();
+    if (ownerEmail && !emailsSent.includes(ownerEmail)) {
+      const branding = await getEmailBranding();
+      const result = await sendEmail({ to: ownerEmail, ...buildTemplate(branding.name), category: "project" });
+      if (result.success) emailsSent.push(ownerEmail);
     }
   }
 

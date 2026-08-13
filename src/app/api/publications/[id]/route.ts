@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmail, publicationStatusEmail } from "@/lib/email";
+import { sendEmail, publicationStatusEmail, getEmailBranding } from "@/lib/email";
+import { getOwnerEmail } from "@/lib/auth";
 import { PUBLICATION_STATUSES } from "@/lib/constants";
 
 export async function PATCH(
@@ -40,18 +41,29 @@ export async function PATCH(
     const newLabel =
       PUBLICATION_STATUSES.find((s) => s.value === body.status)?.label ?? body.status;
 
-    for (const m of existing.members) {
-      if (!m.person.email) continue;
-      const template = publicationStatusEmail({
-        memberName: m.person.name,
+    const buildTemplate = (name: string) =>
+      publicationStatusEmail({
+        memberName: name,
         publicationTitle: publication.title,
         oldStatus: oldLabel,
         newStatus: newLabel,
+        newStatusValue: body.status,
         journal: publication.journal ?? undefined,
         reviewerComments: publication.reviewerComments ?? undefined,
       });
-      const result = await sendEmail({ to: m.person.email, ...template });
+
+    for (const m of existing.members) {
+      if (!m.person.email) continue;
+      const result = await sendEmail({ to: m.person.email, ...buildTemplate(m.person.name), category: "publication" });
       if (result.success) emailsSent.push(m.person.email);
+    }
+
+    // Also notify the owner (so you get the update even with no team members)
+    const ownerEmail = await getOwnerEmail();
+    if (ownerEmail && !emailsSent.includes(ownerEmail)) {
+      const branding = await getEmailBranding();
+      const result = await sendEmail({ to: ownerEmail, ...buildTemplate(branding.name), category: "publication" });
+      if (result.success) emailsSent.push(ownerEmail);
     }
   }
 
