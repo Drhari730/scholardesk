@@ -465,6 +465,41 @@ export function portalInviteEmail(params: {
   };
 }
 
+export function personalProjectAccessEmail(params: {
+  name: string;
+  supervisorName?: string;
+  loginUrl: string;
+  hasPortalAccess: boolean;
+}) {
+  const supervisor = params.supervisorName ?? "Dr. Hari Prakash";
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${escapeHtml(params.name)}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+      ${supervisor} has added you to <strong>Personal Projects</strong> on ScholarDesk. You can now create and
+      track your own projects — including manuscript writing, journal submission, and review status — right
+      from your Team Portal. Everything you create is automatically shared with ${supervisor}.
+    </p>
+    <div style="background:#f0fdfa;border-left:4px solid #0d9488;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:#0f5c5c;font-size:15px;">📁 Create your own manuscript &amp; personal projects</p>
+      <p style="margin:0;color:#0f5c5c;font-size:15px;">📊 Track progress by stage — Drafting → Submitted → Under Review → Accepted → Published</p>
+    </div>
+    <p style="margin:0 0 16px;text-align:center;">
+      <a href="${params.loginUrl}" style="display:inline-block;background:#0d9488;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;">
+        Open Your Portal
+      </a>
+    </p>
+    ${
+      params.hasPortalAccess
+        ? `<p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">This login link is valid for 90 days.</p>`
+        : `<p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">If this is your first time, ${supervisor} will share your portal login (email &amp; PIN) separately so you can sign in.</p>`
+    }
+  `;
+  return {
+    subject: `You've been added to Personal Projects on ScholarDesk`,
+    html: baseTemplate(content),
+  };
+}
+
 export function projectCreatedEmail(params: {
   memberName: string;
   projectTitle: string;

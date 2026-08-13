@@ -76,13 +76,23 @@ export default function PersonalProjectsPage() {
   const { data: team, refetch: refetchTeam } = useFetch<TeamPerson[]>("/api/personal-projects/team");
   const [showForm, setShowForm] = useState(false);
   const [showTeam, setShowTeam] = useState(false);
+  const [teamMsg, setTeamMsg] = useState("");
   const [filter, setFilter] = useState<"all" | "ACTIVE" | "ON_HOLD" | "COMPLETED" | "ARCHIVED">("all");
   const [author, setAuthor] = useState<"all" | "mine" | "team">("all");
   const [newKind, setNewKind] = useState<"MANUSCRIPT" | "GENERAL">("MANUSCRIPT");
   const [newItem, setNewItem] = useState<Record<string, string>>({});
 
   async function toggleMember(personId: string, member: boolean) {
-    await apiPatch("/api/personal-projects/team", { personId, member });
+    const res = await apiPatch("/api/personal-projects/team", { personId, member });
+    if (member && res?.newlyAdded) {
+      setTeamMsg(
+        res.emailSent
+          ? "Member added — a notification email was sent to them."
+          : "Member added. No email sent — they have no email address, or email isn't configured."
+      );
+    } else if (!member) {
+      setTeamMsg("");
+    }
     refetchTeam();
   }
 
@@ -165,6 +175,9 @@ export default function PersonalProjectsPage() {
                 Members you enable can create &amp; share their own personal projects from their portal — those
                 appear here automatically. They need portal access (People → enable portal) to sign in.
               </p>
+              {teamMsg && (
+                <p className="mb-3 rounded-lg bg-teal-50 px-3 py-2 text-xs text-teal-800">{teamMsg}</p>
+              )}
               <div className="max-h-96 space-y-2 overflow-y-auto">
                 {!team?.length ? (
                   <p className="text-sm text-slate-400">No people yet. Add people in the People section first.</p>
