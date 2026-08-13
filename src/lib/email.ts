@@ -749,6 +749,99 @@ export function projectPhaseUpdateEmail(params: {
   };
 }
 
+const PROJECT_STATUS_COPY: Record<
+  string,
+  { emoji: string; subject: string; headline: string; border: string; bg: string; heading: string; closing: string }
+> = {
+  IDEA: {
+    emoji: "💡",
+    subject: "New Idea",
+    headline: "A new research idea is taking shape.",
+    border: "#8b5cf6",
+    bg: "#f5f3ff",
+    heading: "#5b21b6",
+    closing: "Exciting early days — let's shape the question and scope.",
+  },
+  PLANNING: {
+    emoji: "🗺️",
+    subject: "In Planning",
+    headline: "The project has moved into planning.",
+    border: "#6366f1",
+    bg: "#eef2ff",
+    heading: "#3730a3",
+    closing: "Let's firm up the protocol, timeline, and roles.",
+  },
+  ACTIVE: {
+    emoji: "🚀",
+    subject: "Now Active",
+    headline: "The project is now active — let's get to work!",
+    border: "#14b8a6",
+    bg: "#f0fdfa",
+    heading: "#0f5c5c",
+    closing: "Momentum starts now. Check your tasks and let's move it forward.",
+  },
+  ON_HOLD: {
+    emoji: "⏸️",
+    subject: "On Hold",
+    headline: "The project has been put on hold for now.",
+    border: "#f59e0b",
+    bg: "#fffbeb",
+    heading: "#92400e",
+    closing: "We'll pick this back up soon. No action needed for the moment.",
+  },
+  COMPLETED: {
+    emoji: "✅",
+    subject: "Completed!",
+    headline: "Congratulations — the project is complete!",
+    border: "#22c55e",
+    bg: "#ecfdf5",
+    heading: "#065f46",
+    closing: "Fantastic work by the whole team. 🎉 Thank you for seeing it through.",
+  },
+  ARCHIVED: {
+    emoji: "📦",
+    subject: "Archived",
+    headline: "The project has been archived.",
+    border: "#a8a29e",
+    bg: "#f8fafc",
+    heading: "#475569",
+    closing: "Filed away for reference. Reach out if it needs reviving.",
+  },
+};
+
+export function projectStatusEmail(params: {
+  memberName: string;
+  projectTitle: string;
+  oldStatus: string;
+  newStatus: string;
+  newStatusValue?: string;
+  studyState?: string;
+}) {
+  const c = PROJECT_STATUS_COPY[params.newStatusValue ?? ""] ?? {
+    emoji: "📁",
+    subject: params.newStatus,
+    headline: `The project status is now ${params.newStatus}.`,
+    border: "#0d9488",
+    bg: "#f0fdfa",
+    heading: "#0f5c5c",
+    closing: "Please align your tasks with this update.",
+  };
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${escapeHtml(params.memberName)}</strong>,</p>
+    <p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;">${c.emoji} ${c.headline}</p>
+    <div style="background:${c.bg};border-left:4px solid ${c.border};border-radius:8px;padding:20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;color:${c.heading};font-size:18px;font-weight:600;">${escapeHtml(params.projectTitle)}</p>
+      <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Status: <strong>${escapeHtml(params.oldStatus)}</strong> → <strong>${escapeHtml(params.newStatus)}</strong></p>
+      ${params.studyState ? `<p style="margin:0;color:#64748b;font-size:14px;">Study state: ${escapeHtml(params.studyState)}</p>` : ""}
+    </div>
+    <p style="margin:0;color:#475569;font-size:15px;line-height:1.6;">${c.closing}</p>
+  `;
+  return {
+    subject: `${c.emoji} ${params.projectTitle} — ${c.subject}`,
+    html: baseTemplate(content),
+  };
+}
+
 export function planningEventEmail(params: {
   title: string;
   type: string;

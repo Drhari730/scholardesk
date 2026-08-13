@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmail, projectPhaseUpdateEmail, getEmailBranding } from "@/lib/email";
+import { sendEmail, projectPhaseUpdateEmail, projectStatusEmail, getEmailBranding } from "@/lib/email";
 import { getOwnerEmail } from "@/lib/auth";
-import { RESEARCH_PHASES } from "@/lib/constants";
+import { RESEARCH_PHASES, PROJECT_STATUSES } from "@/lib/constants";
 
 export async function GET(
   _req: NextRequest,
@@ -84,6 +84,37 @@ export async function PATCH(
     if (ownerEmail && !emailsSent.includes(ownerEmail)) {
       const branding = await getEmailBranding();
       const result = await sendEmail({ to: ownerEmail, ...buildTemplate(branding.name), category: "project" });
+      if (result.success) emailsSent.push(ownerEmail);
+    }
+  }
+
+  // Project STATUS change (Active / On Hold / Completed / …) — separate from research phase
+  if (body.sendEmail !== false && body.status && body.status !== existing.status) {
+    const oldLabel =
+      PROJECT_STATUSES.find((s) => s.value === existing.status)?.label ?? existing.status;
+    const newLabel =
+      PROJECT_STATUSES.find((s) => s.value === body.status)?.label ?? body.status;
+
+    const buildStatus = (name: string) =>
+      projectStatusEmail({
+        memberName: name,
+        projectTitle: project.title,
+        oldStatus: oldLabel,
+        newStatus: newLabel,
+        newStatusValue: body.status,
+        studyState: project.studyState ?? undefined,
+      });
+
+    for (const m of existing.members) {
+      if (!m.person.email || emailsSent.includes(m.person.email)) continue;
+      const result = await sendEmail({ to: m.person.email, ...buildStatus(m.person.name), category: "project" });
+      if (result.success) emailsSent.push(m.person.email);
+    }
+
+    const ownerEmail = await getOwnerEmail();
+    if (ownerEmail && !emailsSent.includes(ownerEmail)) {
+      const branding = await getEmailBranding();
+      const result = await sendEmail({ to: ownerEmail, ...buildStatus(branding.name), category: "project" });
       if (result.success) emailsSent.push(ownerEmail);
     }
   }
