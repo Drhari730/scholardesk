@@ -314,6 +314,7 @@ model FileAttachment {
 model PortalMessage {
   id        String   @id @default(cuid())
   personId  String?
+  direction String   @default("INBOUND") // INBOUND = person→admin, OUTBOUND = admin→person
   fromName  String
   fromEmail String?
   fromRole  String?
@@ -324,6 +325,7 @@ model PortalMessage {
 
   person Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
 
+  @@index([personId, createdAt])
   @@index([isRead, createdAt])
 }
 

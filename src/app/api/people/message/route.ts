@@ -31,6 +31,22 @@ export async function POST(req: NextRequest) {
   }
 
   const branding = await getEmailBranding();
+  const ownerEmail = await getOwnerEmail();
+
+  // Store the outbound message so it appears in the conversation thread
+  await prisma.portalMessage.create({
+    data: {
+      personId: person.id,
+      direction: "OUTBOUND",
+      fromName: branding.name,
+      fromEmail: ownerEmail ?? null,
+      fromRole: "OWNER",
+      subject,
+      body: message.slice(0, 5000),
+      isRead: false,
+    },
+  });
+
   const template = directMessageEmail({
     name: person.name,
     subject,
@@ -38,7 +54,6 @@ export async function POST(req: NextRequest) {
     supervisorName: branding.name,
   });
 
-  const ownerEmail = await getOwnerEmail();
   const result = await sendEmail({
     to: person.email,
     ...template,
