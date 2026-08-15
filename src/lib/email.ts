@@ -376,25 +376,42 @@ export function portalMessageEmail(params: {
 export function independenceDayEmail(params: { name: string; supervisorName?: string }) {
   const supervisor = params.supervisorName ?? "Dr. Hari Prakash";
   const content = `
-    <div style="height:8px;border-radius:6px;overflow:hidden;margin:0 0 20px;background:linear-gradient(90deg,#FF9933 0 33%,#ffffff 33% 66%,#138808 66% 100%);border:1px solid #eee;"></div>
-    <p style="margin:0 0 8px;text-align:center;font-size:40px;line-height:1;">🇮🇳</p>
-    <h1 style="margin:0 0 8px;text-align:center;font-size:26px;font-weight:800;color:#0f172a;">Happy 80th Independence Day!</h1>
-    <p style="margin:0 0 20px;text-align:center;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#EA580C;font-weight:600;">15 August 2026 · Jai Hind</p>
-    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${escapeHtml(params.name)}</strong>,</p>
-    <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.7;">
-      On this proud day, we celebrate <strong>80 years of freedom</strong> — of unity in our diversity, and of a
-      nation that keeps rising. As one of the world&apos;s fastest-growing countries, India moves forward on the
-      strength of its people and the promise of its youth.
-    </p>
-    <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.7;">
-      Thank you for being part of this journey of learning, research, and service. May we keep building a
-      healthier, wiser, and brighter tomorrow — together.
-    </p>
-    <p style="margin:24px 0 0;text-align:center;font-size:20px;font-weight:700;color:#138808;">Jai Hind! 🇮🇳</p>
-    <p style="margin:12px 0 0;text-align:center;color:#64748b;font-size:14px;">— ${supervisor}</p>
+    <style>
+      @keyframes idmWave { 0%,100%{transform:rotate(0deg)} 20%{transform:rotate(-12deg)} 60%{transform:rotate(12deg)} }
+      @keyframes idmPop { 0%{transform:scale(0.85);opacity:0} 100%{transform:scale(1);opacity:1} }
+      @keyframes idmPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+      @keyframes idmShine { 0%{transform:translateX(-120%)} 100%{transform:translateX(320%)} }
+      @keyframes idmRise { 0%{opacity:0;transform:translateY(12px)} 100%{opacity:1;transform:translateY(0)} }
+      .idm-flag{display:inline-block;animation:idmWave 1.6s ease-in-out infinite;transform-origin:60% 80%}
+      .idm-pop{display:inline-block;animation:idmPop .7s cubic-bezier(.2,.8,.2,1) both}
+      .idm-pulse{display:inline-block;animation:idmPulse 1.8s ease-in-out infinite}
+      .idm-rise{animation:idmRise .8s ease-out both}
+      .idm-shine{animation:idmShine 3s ease-in-out infinite}
+    </style>
+    <div style="position:relative;height:10px;border-radius:6px;overflow:hidden;margin:0 0 22px;">
+      <div style="position:absolute;inset:0;background:linear-gradient(90deg,#FF9933 0 33%,#ffffff 33% 66%,#138808 66% 100%);"></div>
+      <div class="idm-shine" style="position:absolute;top:0;bottom:0;width:40%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.75),rgba(255,255,255,0));"></div>
+    </div>
+    <p style="margin:0 0 8px;text-align:center;font-size:46px;line-height:1;"><span class="idm-flag">🇮🇳</span></p>
+    <h1 class="idm-pop" style="margin:0 0 8px;text-align:center;font-size:26px;font-weight:800;color:#0f172a;">Happy 80th Independence Day!</h1>
+    <p style="margin:0 0 20px;text-align:center;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#EA580C;font-weight:600;">15 August 2026 &nbsp;•&nbsp; Jai Hind</p>
+    <div class="idm-rise">
+      <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${escapeHtml(params.name)}</strong>,</p>
+      <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.7;">
+        On this proud day, we celebrate <strong>80 years of freedom</strong>. A nation strong in its unity and its
+        diversity, a nation that keeps rising. As one of the world&apos;s fastest growing countries, India moves
+        forward on the strength of its people and the promise of its youth.
+      </p>
+      <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.7;">
+        Thank you for being part of this journey of learning, research, and service. May we keep building a
+        healthier, wiser, and brighter tomorrow, together.
+      </p>
+    </div>
+    <p style="margin:24px 0 0;text-align:center;font-size:22px;font-weight:800;color:#138808;"><span class="idm-pulse">Jai Hind! 🇮🇳</span></p>
+    <p style="margin:12px 0 0;text-align:center;color:#64748b;font-size:14px;">With warm wishes, ${supervisor}</p>
   `;
   return {
-    subject: "🇮🇳 Happy 80th Independence Day — Jai Hind!",
+    subject: "🇮🇳 Happy 80th Independence Day, Jai Hind!",
     html: baseTemplate(content),
   };
 }
