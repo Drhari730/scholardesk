@@ -373,6 +373,32 @@ export function portalMessageEmail(params: {
   };
 }
 
+export function independenceDayEmail(params: { name: string; supervisorName?: string }) {
+  const supervisor = params.supervisorName ?? "Dr. Hari Prakash";
+  const content = `
+    <div style="height:8px;border-radius:6px;overflow:hidden;margin:0 0 20px;background:linear-gradient(90deg,#FF9933 0 33%,#ffffff 33% 66%,#138808 66% 100%);border:1px solid #eee;"></div>
+    <p style="margin:0 0 8px;text-align:center;font-size:40px;line-height:1;">🇮🇳</p>
+    <h1 style="margin:0 0 8px;text-align:center;font-size:26px;font-weight:800;color:#0f172a;">Happy 80th Independence Day!</h1>
+    <p style="margin:0 0 20px;text-align:center;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#EA580C;font-weight:600;">15 August 2026 · Jai Hind</p>
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${escapeHtml(params.name)}</strong>,</p>
+    <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.7;">
+      On this proud day, we celebrate <strong>80 years of freedom</strong> — of unity in our diversity, and of a
+      nation that keeps rising. As one of the world&apos;s fastest-growing countries, India moves forward on the
+      strength of its people and the promise of its youth.
+    </p>
+    <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.7;">
+      Thank you for being part of this journey of learning, research, and service. May we keep building a
+      healthier, wiser, and brighter tomorrow — together.
+    </p>
+    <p style="margin:24px 0 0;text-align:center;font-size:20px;font-weight:700;color:#138808;">Jai Hind! 🇮🇳</p>
+    <p style="margin:12px 0 0;text-align:center;color:#64748b;font-size:14px;">— ${supervisor}</p>
+  `;
+  return {
+    subject: "🇮🇳 Happy 80th Independence Day — Jai Hind!",
+    html: baseTemplate(content),
+  };
+}
+
 export function reminderEmail(params: {
   recipientName: string;
   title: string;

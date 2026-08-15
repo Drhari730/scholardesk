@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { DonutChartCard, PieChartCard } from "@/components/charts/chart-cards";
 import { MessagesInboxCard } from "@/components/messages-inbox-card";
+import { IndependenceDayBanner } from "@/components/independence-day-banner";
 import { useFetch } from "@/lib/hooks";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { getDailyQuote, getGreeting, formatWelcomeDate } from "@/lib/quotes";
@@ -167,6 +168,7 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
+      <IndependenceDayBanner admin />
       <FadeIn>
         <div className="mb-8 overflow-hidden rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-800 via-teal-700 to-teal-900 p-6 text-white shadow-xl sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">

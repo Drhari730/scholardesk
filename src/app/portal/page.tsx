@@ -11,6 +11,7 @@ import { LogOut, BookOpen, FlaskConical, CheckCircle2, Paperclip, Download, Load
 import { formatDate } from "@/lib/utils";
 import { getTeamPortalQuote, formatPortalDateTime, getTeamGreeting } from "@/lib/quotes";
 import { PortalPersonalProjects } from "@/components/portal/personal-projects";
+import { IndependenceDayBanner } from "@/components/independence-day-banner";
 import { TASK_STATUSES, PUBLICATION_STATUSES, PORTAL_TASK_STATUSES, getStatusMeta } from "@/lib/constants";
 
 type PortalAttachment = { id: string; filename: string; size: number; mimeType: string };
@@ -169,6 +170,7 @@ export default function PortalPage() {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+        <IndependenceDayBanner />
         <div className="overflow-hidden rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-800 via-teal-700 to-slate-800 p-5 text-white shadow-lg sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
