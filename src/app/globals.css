@@ -8,6 +8,12 @@
   --accent: #d4a853;
   --card: #ffffff;
   --border: #e2e8f0;
+  /* Fonts are defined here (not fetched from Google at build time) so builds
+     never depend on network access to fonts.gstatic.com. */
+  --font-dm-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-fraunces: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+    Cambria, "Times New Roman", serif;
 }
 
 .dark {
