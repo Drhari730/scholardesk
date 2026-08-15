@@ -55,6 +55,7 @@ function WavingFlag() {
 export function IndependenceDayBanner({ admin = false }: { admin?: boolean }) {
   const [show, setShow] = useState(false);
   const [sending, setSending] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [result, setResult] = useState("");
 
   useEffect(() => {
@@ -62,6 +63,25 @@ export function IndependenceDayBanner({ admin = false }: { admin?: boolean }) {
   }, []);
 
   if (!show) return null;
+
+  async function sendTest() {
+    setTesting(true);
+    setResult("");
+    try {
+      const res = await fetch("/api/independence-greeting", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ test: true }),
+      });
+      const data = await res.json();
+      setResult(res.ok ? `Test greeting sent to ${data.sentTo}. 🇮🇳` : data.error ?? "Could not send test.");
+    } catch {
+      setResult("Could not send test — please try again.");
+    } finally {
+      setTesting(false);
+    }
+  }
 
   async function sendGreetings() {
     if (!confirm("Send a Happy Independence Day greeting email to all registered members?")) return;
@@ -160,11 +180,19 @@ export function IndependenceDayBanner({ admin = false }: { admin?: boolean }) {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button
                 onClick={sendGreetings}
-                disabled={sending}
+                disabled={sending || testing}
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 via-slate-700 to-green-600 px-4 py-2 text-sm font-semibold text-white shadow hover:opacity-95 disabled:opacity-60"
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Send greetings to everyone
+              </button>
+              <button
+                onClick={sendTest}
+                disabled={sending || testing}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Send test to me
               </button>
               {result && <span className="text-xs font-medium text-slate-600">{result}</span>}
             </div>
