@@ -22,6 +22,7 @@ import {
   Settings,
   MessageSquare,
   Target,
+  ScrollText,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -33,6 +34,7 @@ const navItems = [
   { href: "/planning", label: "Month Planning", icon: CalendarDays },
   { href: "/research", label: "Research Projects", icon: FlaskConical },
   { href: "/publications", label: "Publications", icon: BookOpen },
+  { href: "/theses", label: "Thesis Tracker", icon: ScrollText },
   { href: "/teaching", label: "Teaching Planner", icon: GraduationCap },
   { href: "/timetable", label: "Class Timetable", icon: Calendar },
   { href: "/exams", label: "Exams & Marks", icon: ClipboardList },

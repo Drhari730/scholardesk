@@ -92,6 +92,53 @@ export function manuscriptProgress(stage: string | null | undefined): number {
   return MANUSCRIPT_STAGES.find((s) => s.value === stage)?.progress ?? 0;
 }
 
+export const DEGREES = [
+  { value: "MASTERS", label: "Masters", color: "bg-blue-100 text-blue-700" },
+  { value: "PHD", label: "PhD", color: "bg-violet-100 text-violet-700" },
+] as const;
+
+export const THESIS_STATUSES = [
+  { value: "PLANNING", label: "Planning", color: "bg-slate-100 text-slate-700" },
+  { value: "ONGOING", label: "Ongoing", color: "bg-blue-100 text-blue-700" },
+  { value: "WRITING", label: "Writing", color: "bg-amber-100 text-amber-700" },
+  { value: "SUBMITTED", label: "Submitted", color: "bg-indigo-100 text-indigo-700" },
+  { value: "DEFENDED", label: "Defended", color: "bg-teal-100 text-teal-700" },
+  { value: "COMPLETED", label: "Completed", color: "bg-emerald-100 text-emerald-700" },
+  { value: "ON_HOLD", label: "On Hold", color: "bg-orange-100 text-orange-700" },
+] as const;
+
+export const MILESTONE_STATUSES = [
+  { value: "PLANNED", label: "Planned", color: "bg-slate-100 text-slate-600", bar: "#94a3b8" },
+  { value: "IN_PROGRESS", label: "In Progress", color: "bg-blue-100 text-blue-700", bar: "#3b82f6" },
+  { value: "DONE", label: "Done", color: "bg-emerald-100 text-emerald-700", bar: "#22c55e" },
+  { value: "DELAYED", label: "Delayed", color: "bg-orange-100 text-orange-700", bar: "#f97316" },
+] as const;
+
+/** Default milestone templates seeded when a thesis is created. */
+export const DEFAULT_THESIS_MILESTONES: Record<string, string[]> = {
+  MASTERS: [
+    "Proposal / Synopsis",
+    "Literature Review",
+    "Ethics / IEC Approval",
+    "Data Collection",
+    "Data Analysis",
+    "Thesis Writing",
+    "Submission",
+    "Viva / Defense",
+  ],
+  PHD: [
+    "Coursework",
+    "Proposal / Synopsis",
+    "Comprehensive Exam",
+    "Ethics / IEC Approval",
+    "Data Collection",
+    "Analysis & Publications",
+    "Thesis Writing",
+    "Submission",
+    "Viva / Defense",
+  ],
+};
+
 export const RESEARCH_PHASES = [
   { value: "PROTOCOL_DEVELOPMENT", label: "Protocol Development", color: "bg-violet-100 text-violet-700" },
   { value: "ETHICS_APPROVAL", label: "Ethics / IEC Approval", color: "bg-purple-100 text-purple-700" },

@@ -329,6 +329,24 @@ model PortalMessage {
   @@index([isRead, createdAt])
 }
 
+/** Student thesis tracker (Masters / PhD) with a Gantt-style milestone timeline. */
+model Thesis {
+  id              String    @id @default(cuid())
+  title           String
+  studentName     String
+  degree          String    @default("MASTERS") // MASTERS | PHD
+  status          String    @default("ONGOING")
+  supervisor      String?
+  startDate       DateTime?
+  expectedEndDate DateTime?
+  milestones      String?   // JSON array of { id, title, start, end, status }
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([degree, status])
+}
+
 /** Personal projects. Owner-created (createdById null) are private to the admin;
  *  team-member-created ones (createdById set) are shared into the admin's folder. */
 model PersonalProject {
