@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     });
 
     let emailsSent = 0;
-    if (notifyTeam && (entityType === "project" || entityType === "publication")) {
+    if (notifyTeam && (entityType === "project" || entityType === "publication" || entityType === "thesis")) {
       const prefs = await getEmailPrefs();
       const branding = await getEmailBranding();
 
@@ -109,6 +109,24 @@ export async function POST(req: NextRequest) {
             const result = await sendEmail({ to: m.person.email, ...template, category: "team" });
             if (result.success) emailsSent++;
           }
+        }
+      }
+
+      if (entityType === "thesis") {
+        const thesis = await prisma.thesis.findUnique({
+          where: { id: entityId },
+          include: { person: true },
+        });
+        if (thesis?.person?.email) {
+          const template = attachmentSharedEmail({
+            memberName: thesis.person.name,
+            itemTitle: thesis.title,
+            itemType: "thesis",
+            filename: file.name,
+            supervisorName: branding.name,
+          });
+          const result = await sendEmail({ to: thesis.person.email, ...template, category: "team" });
+          if (result.success) emailsSent++;
         }
       }
     }

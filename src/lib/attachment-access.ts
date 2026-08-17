@@ -19,5 +19,12 @@ export async function canPersonAccessAttachment(
     return !!member;
   }
 
+  if (entityType === "thesis") {
+    const thesis = await prisma.thesis.findFirst({
+      where: { id: entityId, personId },
+    });
+    return !!thesis;
+  }
+
   return false;
 }

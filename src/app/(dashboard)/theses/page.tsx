@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, X, GraduationCap, Download } from "lucide-react";
+import { Plus, Trash2, Pencil, X, GraduationCap, Download, MessageSquare, Paperclip, ListTodo, Loader2 } from "lucide-react";
 import { openGanttPrint } from "@/lib/print-gantt";
+import { FileAttachments } from "@/components/ui/file-attachments";
+import { ThesisTasks } from "@/components/thesis-tasks";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -169,7 +171,34 @@ export default function ThesesPage() {
 
   const [editing, setEditing] = useState<Thesis | null>(null);
   const [msEdit, setMsEdit] = useState<Milestone[]>([]);
-  const [editFields, setEditFields] = useState({ title: "", studentName: "", personId: "", status: "", startDate: "", expectedEndDate: "", instructions: "" });
+  const [editFields, setEditFields] = useState({ title: "", studentName: "", personId: "", status: "", startDate: "", expectedEndDate: "" });
+
+  const [instrTarget, setInstrTarget] = useState<Thesis | null>(null);
+  const [instrText, setInstrText] = useState("");
+  const [instrSaving, setInstrSaving] = useState(false);
+  const [instrMsg, setInstrMsg] = useState("");
+  const [filesTarget, setFilesTarget] = useState<Thesis | null>(null);
+  const [tasksTarget, setTasksTarget] = useState<Thesis | null>(null);
+
+  function openInstr(t: Thesis) {
+    setInstrTarget(t);
+    setInstrText(t.instructions ?? "");
+    setInstrMsg("");
+  }
+  async function sendInstr() {
+    if (!instrTarget) return;
+    setInstrSaving(true);
+    setInstrMsg("");
+    try {
+      await apiPatch(`/api/theses/${instrTarget.id}`, { instructions: instrText, notifyStudent: true });
+      setInstrMsg(instrTarget.personId ? "Saved & student notified by email." : "Saved. (Link a student to email them.)");
+      refetch();
+    } catch {
+      setInstrMsg("Could not save.");
+    } finally {
+      setInstrSaving(false);
+    }
+  }
 
   async function createThesis(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -189,7 +218,6 @@ export default function ThesesPage() {
       status: t.status,
       startDate: t.startDate ? t.startDate.slice(0, 10) : "",
       expectedEndDate: t.expectedEndDate ? t.expectedEndDate.slice(0, 10) : "",
-      instructions: t.instructions ?? "",
     });
   }
 
@@ -381,6 +409,18 @@ export default function ThesesPage() {
                     </div>
                   </div>
 
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => openInstr(t)}>
+                      <MessageSquare className="h-3.5 w-3.5" /> Instructions
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => setFilesTarget(t)}>
+                      <Paperclip className="h-3.5 w-3.5" /> Files
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => setTasksTarget(t)}>
+                      <ListTodo className="h-3.5 w-3.5" /> Tasks
+                    </Button>
+                  </div>
+
                   <div className="mt-3 overflow-x-auto border-t border-slate-100 pt-3">
                     <Gantt thesis={t} />
                   </div>
@@ -444,17 +484,6 @@ export default function ThesesPage() {
             </div>
 
             <div>
-              <Label>Instructions for the student (optional)</Label>
-              <Textarea
-                value={editFields.instructions}
-                onChange={(e) => setEditFields((f) => ({ ...f, instructions: e.target.value }))}
-                rows={2}
-                className="mt-1"
-                placeholder="Guidance shown in the student's portal (they'll be emailed when you save)…"
-              />
-            </div>
-
-            <div>
               <div className="mb-1 flex items-center justify-between">
                 <Label>Milestones</Label>
                 <Button size="sm" variant="outline" type="button" onClick={addMilestone} className="h-7 gap-1 text-xs">
@@ -490,6 +519,44 @@ export default function ThesesPage() {
 
             <Button onClick={saveEdit} className="w-full">Save changes</Button>
           </div>
+        </DialogContent>
+      </DialogRoot>
+
+      {/* Instructions dialog */}
+      <DialogRoot open={!!instrTarget} onOpenChange={(o) => !o && setInstrTarget(null)}>
+        <DialogContent title={instrTarget ? `Instructions — ${instrTarget.studentName}` : "Instructions"}>
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">
+              Shown in the student&apos;s portal. Saving emails the linked student.
+            </p>
+            <Textarea value={instrText} onChange={(e) => setInstrText(e.target.value)} rows={6} placeholder="Write instructions for the student…" />
+            {instrMsg && <p className="text-xs text-teal-700">{instrMsg}</p>}
+            <Button onClick={sendInstr} disabled={instrSaving} className="w-full gap-2">
+              {instrSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Saving…
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="h-4 w-4" /> Save &amp; Send
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </DialogRoot>
+
+      {/* Files dialog */}
+      <DialogRoot open={!!filesTarget} onOpenChange={(o) => !o && setFilesTarget(null)}>
+        <DialogContent title={filesTarget ? `Files — ${filesTarget.studentName}` : "Files"}>
+          {filesTarget && <FileAttachments entityType="thesis" entityId={filesTarget.id} shareable />}
+        </DialogContent>
+      </DialogRoot>
+
+      {/* Tasks dialog */}
+      <DialogRoot open={!!tasksTarget} onOpenChange={(o) => !o && setTasksTarget(null)}>
+        <DialogContent title={tasksTarget ? `Tasks — ${tasksTarget.studentName}` : "Tasks"}>
+          {tasksTarget && <ThesisTasks thesisId={tasksTarget.id} linked={!!tasksTarget.personId} />}
         </DialogContent>
       </DialogRoot>
     </PageTransition>
