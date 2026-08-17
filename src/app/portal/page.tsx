@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/utils";
 import { getTeamPortalQuote, formatPortalDateTime, getTeamGreeting } from "@/lib/quotes";
 import { PortalPersonalProjects } from "@/components/portal/personal-projects";
 import { IndependenceDayBanner } from "@/components/independence-day-banner";
+import { ThesisView } from "@/components/portal/thesis-view";
 import { TASK_STATUSES, PUBLICATION_STATUSES, PORTAL_TASK_STATUSES, getStatusMeta } from "@/lib/constants";
 
 type PortalAttachment = { id: string; filename: string; size: number; mimeType: string };
@@ -24,8 +25,18 @@ type PortalTask = {
   project: { title: string } | null;
 };
 
+interface PortalThesis {
+  title: string;
+  degree: string;
+  status: string;
+  startDate: string | null;
+  expectedEndDate: string | null;
+  milestones: string | null;
+}
+
 interface PortalData {
   person: { id: string; name: string; email: string | null; role: string; personalProjectMember?: boolean };
+  thesis?: PortalThesis | null;
   tasks: PortalTask[];
   publications: Array<{ id: string; title: string; status: string; role: string; journal: string | null; attachments: PortalAttachment[] }>;
   projects: Array<{ id: string; title: string; status: string; role: string; researchPhase: string; attachments: PortalAttachment[] }>;
@@ -348,6 +359,8 @@ export default function PortalPage() {
             </div>
           )}
         </section>
+
+        {data.thesis && <ThesisView thesis={data.thesis} />}
 
         {data.person.personalProjectMember && <PortalPersonalProjects />}
 

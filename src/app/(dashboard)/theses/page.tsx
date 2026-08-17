@@ -25,6 +25,7 @@ interface Thesis {
   id: string;
   title: string;
   studentName: string;
+  personId: string | null;
   degree: string;
   status: string;
   supervisor: string | null;
@@ -32,6 +33,13 @@ interface Thesis {
   expectedEndDate: string | null;
   milestones: string | null;
   notes: string | null;
+  person?: { id: string; name: string; portalEnabled?: boolean } | null;
+}
+
+interface PersonLite {
+  id: string;
+  name: string;
+  portalEnabled?: boolean;
 }
 
 function meta<T extends { value: string; label: string; color: string }>(list: readonly T[], v: string) {
@@ -152,13 +160,14 @@ function Gantt({ thesis }: { thesis: Thesis }) {
 
 export default function ThesesPage() {
   const { data: theses, loading, refetch } = useFetch<Thesis[]>("/api/theses");
+  const { data: people } = useFetch<PersonLite[]>("/api/people");
   const [showAdd, setShowAdd] = useState(false);
   const [addDegree, setAddDegree] = useState<"MASTERS" | "PHD">("MASTERS");
   const [filter, setFilter] = useState<"ALL" | "MASTERS" | "PHD">("ALL");
 
   const [editing, setEditing] = useState<Thesis | null>(null);
   const [msEdit, setMsEdit] = useState<Milestone[]>([]);
-  const [editFields, setEditFields] = useState({ title: "", studentName: "", status: "", startDate: "", expectedEndDate: "" });
+  const [editFields, setEditFields] = useState({ title: "", studentName: "", personId: "", status: "", startDate: "", expectedEndDate: "" });
 
   async function createThesis(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -174,6 +183,7 @@ export default function ThesesPage() {
     setEditFields({
       title: t.title,
       studentName: t.studentName,
+      personId: t.personId ?? "",
       status: t.status,
       startDate: t.startDate ? t.startDate.slice(0, 10) : "",
       expectedEndDate: t.expectedEndDate ? t.expectedEndDate.slice(0, 10) : "",
@@ -252,8 +262,23 @@ export default function ThesesPage() {
                   </p>
                 </div>
                 <div>
-                  <Label>Student name</Label>
-                  <Input name="studentName" required className="mt-1" />
+                  <Label>Portal student (optional)</Label>
+                  <Select name="personId" className="mt-1" defaultValue="">
+                    <option value="">Not linked — type a name below</option>
+                    {people?.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.portalEnabled ? "" : " (portal not enabled)"}
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Link a person so they see this thesis & timeline in their Team Portal.
+                  </p>
+                </div>
+                <div>
+                  <Label>Student name (if not linked)</Label>
+                  <Input name="studentName" className="mt-1" />
                 </div>
                 <div>
                   <Label>Thesis title</Label>
@@ -324,6 +349,7 @@ export default function ThesesPage() {
                         <span className="font-semibold text-slate-900">{t.studentName}</span>
                         <Badge className={deg.color}>{deg.label}</Badge>
                         <Badge className={st.color}>{st.label}</Badge>
+                        {t.personId && <Badge className="bg-teal-50 text-teal-700">Portal linked</Badge>}
                       </div>
                       <p className="mt-1 text-sm text-slate-600">{t.title}</p>
                       <p className="mt-0.5 text-xs text-slate-400">
@@ -376,6 +402,25 @@ export default function ThesesPage() {
                   ))}
                 </Select>
               </div>
+            </div>
+            <div>
+              <Label>Portal student</Label>
+              <Select
+                value={editFields.personId}
+                onChange={(e) => setEditFields((f) => ({ ...f, personId: e.target.value }))}
+                className="mt-1"
+              >
+                <option value="">Not linked</option>
+                {people?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.portalEnabled ? "" : " (portal not enabled)"}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-xs text-slate-400">
+                Linking shows this thesis & timeline in the student&apos;s portal (and syncs the name).
+              </p>
             </div>
             <div>
               <Label>Thesis title</Label>

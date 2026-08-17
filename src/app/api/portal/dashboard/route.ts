@@ -48,6 +48,11 @@ export async function GET(req: NextRequest) {
     attachmentsByEntity.set(key, list);
   }
 
+  const thesis = await prisma.thesis.findFirst({
+    where: { personId: person.id },
+    orderBy: { createdAt: "desc" },
+  });
+
   return NextResponse.json({
     person: {
       id: person.id,
@@ -56,6 +61,7 @@ export async function GET(req: NextRequest) {
       role: person.role,
       personalProjectMember: person.personalProjectMember,
     },
+    thesis,
     tasks: person.tasks,
     publications: person.publicationMembers.map((m) => ({
       role: m.role,

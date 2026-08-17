@@ -8,6 +8,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const data: {
     title?: string;
     studentName?: string;
+    personId?: string | null;
     degree?: string;
     status?: string;
     supervisor?: string | null;
@@ -18,6 +19,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   } = {};
   if (body.title !== undefined) data.title = String(body.title).trim();
   if (body.studentName !== undefined) data.studentName = String(body.studentName).trim();
+  if (body.personId !== undefined) {
+    const pid = body.personId ? String(body.personId) : null;
+    data.personId = pid;
+    if (pid) {
+      const person = await prisma.person.findUnique({ where: { id: pid } });
+      if (person) data.studentName = person.name;
+    }
+  }
   if (body.degree !== undefined) data.degree = body.degree === "PHD" ? "PHD" : "MASTERS";
   if (body.status !== undefined) data.status = body.status;
   if (body.supervisor !== undefined) data.supervisor = body.supervisor || null;

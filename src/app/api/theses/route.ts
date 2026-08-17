@@ -28,14 +28,25 @@ function seedMilestones(degree: string, start: Date, end: Date) {
 export async function GET() {
   const theses = await prisma.thesis.findMany({
     orderBy: [{ degree: "asc" }, { createdAt: "desc" }],
+    include: { person: { select: { id: true, name: true, portalEnabled: true } } },
   });
   return NextResponse.json(theses);
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  if (!body.title || !body.studentName) {
-    return NextResponse.json({ error: "Title and student name are required." }, { status: 400 });
+
+  const personId = body.personId ? String(body.personId) : null;
+  let studentName = body.studentName ? String(body.studentName).trim() : "";
+  if (personId) {
+    const person = await prisma.person.findUnique({ where: { id: personId } });
+    if (person) studentName = person.name;
+  }
+  if (!body.title || !studentName) {
+    return NextResponse.json(
+      { error: "Title and a student (name or linked portal student) are required." },
+      { status: 400 }
+    );
   }
   const degree = body.degree === "PHD" ? "PHD" : "MASTERS";
   const start = body.startDate ? new Date(body.startDate) : new Date();
@@ -49,7 +60,8 @@ export async function POST(req: NextRequest) {
   const thesis = await prisma.thesis.create({
     data: {
       title: String(body.title).trim(),
-      studentName: String(body.studentName).trim(),
+      studentName,
+      personId,
       degree,
       status: body.status || "ONGOING",
       supervisor: body.supervisor || null,
