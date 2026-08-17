@@ -342,6 +342,7 @@ model Thesis {
   startDate       DateTime?
   expectedEndDate DateTime?
   milestones      String?   // JSON array of { id, title, start, end, status }
+  instructions    String?
   notes           String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

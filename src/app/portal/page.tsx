@@ -26,12 +26,16 @@ type PortalTask = {
 };
 
 interface PortalThesis {
+  id: string;
   title: string;
+  studentName: string;
   degree: string;
   status: string;
+  supervisor: string | null;
   startDate: string | null;
   expectedEndDate: string | null;
   milestones: string | null;
+  instructions: string | null;
 }
 
 interface PortalData {

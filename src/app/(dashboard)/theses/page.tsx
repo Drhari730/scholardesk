@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, X, GraduationCap } from "lucide-react";
+import { Plus, Trash2, Pencil, X, GraduationCap, Download } from "lucide-react";
+import { openGanttPrint } from "@/lib/print-gantt";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +33,7 @@ interface Thesis {
   startDate: string | null;
   expectedEndDate: string | null;
   milestones: string | null;
+  instructions: string | null;
   notes: string | null;
   person?: { id: string; name: string; portalEnabled?: boolean } | null;
 }
@@ -167,7 +169,7 @@ export default function ThesesPage() {
 
   const [editing, setEditing] = useState<Thesis | null>(null);
   const [msEdit, setMsEdit] = useState<Milestone[]>([]);
-  const [editFields, setEditFields] = useState({ title: "", studentName: "", personId: "", status: "", startDate: "", expectedEndDate: "" });
+  const [editFields, setEditFields] = useState({ title: "", studentName: "", personId: "", status: "", startDate: "", expectedEndDate: "", instructions: "" });
 
   async function createThesis(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -187,6 +189,7 @@ export default function ThesesPage() {
       status: t.status,
       startDate: t.startDate ? t.startDate.slice(0, 10) : "",
       expectedEndDate: t.expectedEndDate ? t.expectedEndDate.slice(0, 10) : "",
+      instructions: t.instructions ?? "",
     });
   }
 
@@ -366,6 +369,9 @@ export default function ThesesPage() {
                           <option key={s.value} value={s.value}>{s.label}</option>
                         ))}
                       </Select>
+                      <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => openGanttPrint(t)}>
+                        <Download className="h-3.5 w-3.5" /> Download
+                      </Button>
                       <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => openEdit(t)}>
                         <Pencil className="h-3.5 w-3.5" /> Edit
                       </Button>
@@ -435,6 +441,17 @@ export default function ThesesPage() {
                 <Label>Expected end</Label>
                 <Input type="date" value={editFields.expectedEndDate} onChange={(e) => setEditFields((f) => ({ ...f, expectedEndDate: e.target.value }))} className="mt-1" />
               </div>
+            </div>
+
+            <div>
+              <Label>Instructions for the student (optional)</Label>
+              <Textarea
+                value={editFields.instructions}
+                onChange={(e) => setEditFields((f) => ({ ...f, instructions: e.target.value }))}
+                rows={2}
+                className="mt-1"
+                placeholder="Guidance shown in the student's portal (they'll be emailed when you save)…"
+              />
             </div>
 
             <div>

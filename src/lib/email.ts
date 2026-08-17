@@ -416,6 +416,40 @@ export function independenceDayEmail(params: { name: string; supervisorName?: st
   };
 }
 
+export function thesisUpdateEmail(params: {
+  recipientName: string;
+  actorName: string;
+  thesisTitle: string;
+  studentName: string;
+  summary: string;
+  instructions?: string | null;
+}) {
+  const content = `
+    <p style="margin:0 0 16px;color:#334155;font-size:16px;">Dear <strong>${escapeHtml(params.recipientName)}</strong>,</p>
+    <p style="margin:0 0 20px;color:#475569;font-size:15px;line-height:1.6;">
+      <strong>${escapeHtml(params.actorName)}</strong> updated the thesis timeline:
+    </p>
+    <div style="background:#f0fdfa;border-left:4px solid #0d9488;border-radius:8px;padding:20px;margin-bottom:20px;">
+      <p style="margin:0 0 6px;color:#0f5c5c;font-size:16px;font-weight:600;">${escapeHtml(params.thesisTitle)}</p>
+      <p style="margin:0 0 8px;color:#64748b;font-size:13px;">Student: ${escapeHtml(params.studentName)}</p>
+      <p style="margin:0;color:#475569;font-size:14px;line-height:1.6;">${escapeHtml(params.summary)}</p>
+    </div>
+    ${
+      params.instructions
+        ? `<div style="background:#eff6ff;border-left:4px solid #3b82f6;border-radius:8px;padding:16px;margin-bottom:20px;">
+             <p style="margin:0 0 6px;color:#1e3a8a;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Instructions</p>
+             <p style="margin:0;color:#1e3a8a;font-size:14px;line-height:1.6;white-space:pre-line;">${escapeHtml(params.instructions)}</p>
+           </div>`
+        : ""
+    }
+    <p style="margin:0;color:#475569;font-size:14px;">Open ScholarDesk to view the full milestone timeline.</p>
+  `;
+  return {
+    subject: `Thesis update: ${params.studentName} — ${params.thesisTitle}`,
+    html: baseTemplate(content),
+  };
+}
+
 export function reminderEmail(params: {
   recipientName: string;
   title: string;
