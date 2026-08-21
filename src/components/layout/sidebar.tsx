@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Target,
   ScrollText,
+  Mic,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -122,6 +123,20 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* External: one-click sign-in to Vritta (opens in a new tab via SSO) */}
+        <a
+          href="/api/vritta-sso"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-teal-100/70 transition-all duration-200 hover:bg-white/5 hover:text-white"
+        >
+          <AnimatedIcon className="relative inline-flex">
+            <Mic className="relative h-4 w-4 shrink-0" />
+          </AnimatedIcon>
+          <span className="relative">Vritta Meetings</span>
+          <span className="relative ml-auto text-[11px] text-teal-300/60">↗</span>
+        </a>
       </nav>
 
       <div className="border-t border-teal-800/30 p-4 space-y-2">
